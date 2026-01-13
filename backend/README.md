@@ -39,7 +39,7 @@ python -m venv venv
 
 **Windows:**
 ```bash
-venv\Scripts\activate
+./venv/Scripts/Activate.ps1
 ```
 
 **macOS / Linux:**
@@ -63,11 +63,14 @@ cp .env.example .env
 
 Update `.env` with the required values:
 ```env
+# Flask configuration
 FLASK_ENV=development
-FLASK_APP=app/__main__.py
 FLASK_RUN_PORT=5000
+
+# Supabase configuration
 SUPABASE_URL=your_supabase_project_url
 SUPABASE_ANON_KEY=your_supabase_anon_key
+
 ```
 
 ---
@@ -79,7 +82,7 @@ flask run
 
 or
 ```bash
-python app/__main__.py
+python main.py
 ```
 
 ---

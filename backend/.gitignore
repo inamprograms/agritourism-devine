@@ -1,1 +1,35 @@
+# Virtual environments
+venv/
+.env/
+.env.*
 
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Flask
+instance/
+.webassets-cache
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor / IDE
+.vscode/
+.idea/
+
+# Test & coverage
+.coverage
+htmlcov/
+
+# Temporary files
+*.tmp
+*.bak
+
+.env
