@@ -115,4 +115,4 @@ Active development
 
 ## License
 
-This project is part of an academic and MVP development initiative.
+This project is part of MVP development initiative.
