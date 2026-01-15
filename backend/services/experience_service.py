@@ -1,50 +1,56 @@
 # services/experience_service.py
 
+from data.supabase_client import supabase
+from data.schemas.experience import experience_schema
+
 class ExperienceService:
     """
-    Handles farm experiences: CRUD, listing, enabling/disabling.
+    Handles farm experiences: CRUD, listing, enabling/disabling using Supabase
     """
-
-    def __init__(self):
-        # For now, store experiences in-memory (dict), replace later with DB
-        self.experiences_db = {}  # {farm_id: [experience_dict, ...]}
 
     def save_experiences(self, farm_id, experiences):
         """
-        Save generated experiences for a farm.
+        Save generated experiences for a farm to Supabase
         """
-        self.experiences_db[farm_id] = experiences
+        # Delete existing experiences for farm first (optional, to avoid duplicates)
+        supabase.table("experiences").delete().eq("farm_id", farm_id).execute()
+
+        # Insert new experiences
+        data_to_insert = [experience_schema(farm_id, exp) for exp in experiences]
+        supabase.table("experiences").insert(data_to_insert).execute()
         return experiences
 
     def list_experiences(self, farm_id, level=None):
         """
         List experiences for a farm, optionally filtered by level.
         """
-        all_exp = self.experiences_db.get(farm_id, [])
+        query = supabase.table("experiences").select("*").eq("farm_id", farm_id)
         if level:
-            return [e for e in all_exp if e.get("level") == level]
-        return all_exp
+            query = query.eq("level", level)
+        response = query.execute()
+        return response.data or []
 
     def enable_experience(self, farm_id, experience_title):
         """
         Mark an experience as enabled (for farmer dashboard)
         """
-        farm_exp = self.experiences_db.get(farm_id, [])
-        for exp in farm_exp:
-            if exp["title"] == experience_title:
-                exp["enabled"] = True
-                return exp
-        return None
+        supabase.table("experiences")\
+            .update({"enabled": True})\
+            .eq("farm_id", farm_id)\
+            .eq("title", experience_title)\
+            .execute()
+        return self.list_experiences(farm_id, level=None)
 
     def disable_experience(self, farm_id, experience_title):
         """
         Mark an experience as disabled
         """
-        farm_exp = self.experiences_db.get(farm_id, [])
-        for exp in farm_exp:
-            if exp["title"] == experience_title:
-                exp["enabled"] = False
-                return exp
-        return None
-    
+        supabase.table("experiences")\
+            .update({"enabled": False})\
+            .eq("farm_id", farm_id)\
+            .eq("title", experience_title)\
+            .execute()
+        return self.list_experiences(farm_id, level=None)
+
+# Singleton instance
 experience_service = ExperienceService()

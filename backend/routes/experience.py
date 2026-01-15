@@ -11,3 +11,32 @@ def get_experiences(farm_id):
         "farm_id": farm_id,
         "experiences": experiences
     })
+
+# --- Enable experience ---
+@experience_bp.route("/farms/<farm_id>/experiences/enable", methods=["PATCH"])
+def enable_experience(farm_id):
+    data = request.get_json() or {}
+    title = data.get("title")
+    if not title:
+        return jsonify({"error": "title is required"}), 400
+
+    updated = experience_service.enable_experience(farm_id, title)
+    return jsonify({
+        "farm_id": farm_id,
+        "updated_experiences": updated
+    })
+
+
+# --- Disable experience ---
+@experience_bp.route("/farms/<farm_id>/experiences/disable", methods=["PATCH"])
+def disable_experience(farm_id):
+    data = request.get_json() or {}
+    title = data.get("title")
+    if not title:
+        return jsonify({"error": "title is required"}), 400
+
+    updated = experience_service.disable_experience(farm_id, title)
+    return jsonify({
+        "farm_id": farm_id,
+        "updated_experiences": updated
+    })

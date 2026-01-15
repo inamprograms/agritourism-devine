@@ -8,4 +8,4 @@ class Config:
     FLASK_RUN_PORT = int(os.getenv("FLASK_RUN_PORT", 5000))
 
     SUPABASE_URL = os.getenv("SUPABASE_URL")
-    SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
+    SUPABASE_KEY = os.getenv("SUPABASE_KEY")
