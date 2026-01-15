@@ -2,6 +2,7 @@
 
 from data.supabase_client import supabase
 from data.schemas.experience import experience_schema
+from postgrest import APIError
 
 class ExperienceService:
     """
@@ -12,45 +13,61 @@ class ExperienceService:
         """
         Save generated experiences for a farm to Supabase
         """
-        # Delete existing experiences for farm first (optional, to avoid duplicates)
-        supabase.table("experiences").delete().eq("farm_id", farm_id).execute()
+        try:
+            # Delete existing experiences for farm first (optional, to avoid duplicates)
+            supabase.table("experiences").delete().eq("farm_id", farm_id).execute()
 
-        # Insert new experiences
-        data_to_insert = [experience_schema(farm_id, exp) for exp in experiences]
-        supabase.table("experiences").insert(data_to_insert).execute()
-        return experiences
+            # Insert new experiences
+            data_to_insert = [experience_schema(farm_id, exp) for exp in experiences]
+            supabase.table("experiences").insert(data_to_insert).execute()
+            return experiences
+        
+        except APIError as e:
+            return {"error": str(e)}, 500
 
     def list_experiences(self, farm_id, level=None):
         """
         List experiences for a farm, optionally filtered by level.
         """
-        query = supabase.table("experiences").select("*").eq("farm_id", farm_id)
-        if level:
-            query = query.eq("level", level)
-        response = query.execute()
-        return response.data or []
+        try:
+            query = supabase.table("experiences").select("*").eq("farm_id", farm_id)
+            if level:
+                query = query.eq("level", level)
+            response = query.execute()
+            if not response.data:
+                return {"message": "No experiences found"}, 404
+            return response.data
+        
+        except APIError as e:
+            return {"error": str(e)}, 500
 
     def enable_experience(self, farm_id, experience_title):
         """
         Mark an experience as enabled (for farmer dashboard)
         """
-        supabase.table("experiences")\
-            .update({"enabled": True})\
-            .eq("farm_id", farm_id)\
-            .eq("title", experience_title)\
-            .execute()
-        return self.list_experiences(farm_id, level=None)
-
+        try:
+            supabase.table("experiences")\
+                .update({"enabled": True})\
+                .eq("farm_id", farm_id)\
+                .eq("title", experience_title)\
+                .execute()
+            return self.list_experiences(farm_id, level=None)
+        except APIError as e:
+            return {"error": str(e)}, 500
+        
     def disable_experience(self, farm_id, experience_title):
         """
         Mark an experience as disabled
         """
-        supabase.table("experiences")\
-            .update({"enabled": False})\
-            .eq("farm_id", farm_id)\
-            .eq("title", experience_title)\
-            .execute()
-        return self.list_experiences(farm_id, level=None)
+        try:
+            supabase.table("experiences")\
+                .update({"enabled": False})\
+                .eq("farm_id", farm_id)\
+                .eq("title", experience_title)\
+                .execute()
+            return self.list_experiences(farm_id, level=None)
+        except APIError as e:
+            return {"error": str(e)}, 500
 
 # Singleton instance
 experience_service = ExperienceService()
