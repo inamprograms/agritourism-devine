@@ -21,9 +21,11 @@ def enable_experience(farm_id):
         return jsonify({"error": "title is required"}), 400
 
     updated = experience_service.enable_experience(farm_id, title)
+    if not updated:
+        return jsonify({"error": "Experience not found"}), 404
     return jsonify({
         "farm_id": farm_id,
-        "updated_experiences": updated
+        "experience": updated
     })
 
 
@@ -36,7 +38,9 @@ def disable_experience(farm_id):
         return jsonify({"error": "title is required"}), 400
 
     updated = experience_service.disable_experience(farm_id, title)
+    if not updated:
+        return jsonify({"error": "Experience not found"}), 404
     return jsonify({
         "farm_id": farm_id,
-        "updated_experiences": updated
+        "experience": updated
     })
