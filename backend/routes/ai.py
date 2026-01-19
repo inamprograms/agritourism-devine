@@ -55,7 +55,9 @@ def ai_explain_experience(farm_id, experience_id):
 
     # 2. Fetch experience from DB  experience_id
     experience = experience_service.get_experience_by_id(experience_id)
-    
+    if not experience:
+        return {"error": "Experience not found"}, 404
+
     # 3. Prepare clean experience summary for AI
     experience_details = {
         "title": experience["title"],
@@ -77,3 +79,39 @@ def ai_explain_experience(farm_id, experience_id):
         "experience_id": experience_id,
         "ai": ai_response
     }
+    
+@ai_bp.route("/farms/<int:farm_id>/experiences/<int:experience_id>/story", methods=["POST"])
+def generate_experience_story(farm_id, experience_id):
+    """
+    Endpoint to generate visitor-friendly story for a single experience.
+    """
+    from services.story_service import story_service
+
+    data = request.get_json() or {}
+    language = data.get("language", "en")
+
+    # Fetch experience from DB
+    experience = experience_service.get_experience_by_id(experience_id)
+    if not experience:
+        return {"error": "Experience not found"}, 404
+
+    # Prepare minimal experience info for story
+    experience_details = {
+        "title": experience["title"],
+        "type": experience["type"],
+        "level": experience["level"],
+        "monetization": experience["monetization"],
+        "enabled": experience["enabled"]
+    }
+
+    # Call AI Story Generator
+    story_response = story_service.generate_story(
+        experience_details=experience_details,
+        language=language
+    )
+
+    return {
+        "experience_id": experience_id,
+        "story": story_response
+    }
+
