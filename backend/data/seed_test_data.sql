@@ -14,3 +14,10 @@ VALUES
   (101, 1, 'dairy', 'small'),
   (102, 1, 'mixed', 'medium'),
   (201, 2, 'crops', 'small');
+
+-- =========================
+-- VISITOR
+-- =========================
+INSERT INTO visitor (experience_id, views, photos, reviews)
+VALUES
+  (23, 0, '["https://example.com/photo1.jpg"]', '[{"user":"Alice","rating":5,"comment":"Loved it!"}]');
