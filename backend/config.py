@@ -9,3 +9,9 @@ class Config:
 
     SUPABASE_URL = os.getenv("SUPABASE_URL")
     SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+
+    # AI config
+    AI_ENABLED = True
+    AI_PROVIDER = "groq"
+    AI_MODEL = "llama-3.1-8b-instant"
+    AI_API_KEY = os.getenv("GROQ_API_KEY")

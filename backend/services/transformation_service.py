@@ -59,3 +59,24 @@ class TransformationService:
             })
 
         return experiences
+    
+    def get_ai_summary(self, experiences):
+        """
+        Converts generated experiences into a simple,
+        explainable structure for AI consumption.
+        """
+        summary = {}
+
+        for exp in experiences:
+            level = f"Level {exp['level']}"
+            if level not in summary:
+                summary[level] = []
+
+            summary[level].append({
+                "title": exp["title"],
+                "type": exp["type"],
+                "monetization": exp["monetization"]
+            })
+
+        return summary
+
