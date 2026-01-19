@@ -101,6 +101,25 @@ class ExperienceService:
 
         except APIError as e:
             raise e
+        
+    def get_experience_by_id(self, experience_id):
+        """
+        Fetch a single experience by its ID.
+        Used by AI explanation layer.
+        """
+        try:
+            res = (
+                supabase
+                .table("experiences")
+                .select("*")
+                .eq("id", experience_id)
+                .single()
+                .execute()
+            )
+            return res.data
+
+        except APIError:
+            return None
 
 # Singleton instance
 experience_service = ExperienceService()
