@@ -7,6 +7,7 @@ from .transformation import transformation_bp
 from .ai import ai_bp
 from .visitor import visitor_bp
 from .growth import growth_bp
+from .experience import experience_bp
 
 def register_routes(app):
     app.register_blueprint(health_bp)
@@ -18,3 +19,5 @@ def register_routes(app):
     app.register_blueprint(ai_bp)
     app.register_blueprint(visitor_bp)
     app.register_blueprint(growth_bp)
+    app.register_blueprint(experience_bp)
+    
