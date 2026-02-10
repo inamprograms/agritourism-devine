@@ -1,4 +1,5 @@
 from .health import health_bp
+from .health import health_live_bp
 from .farmer import farmer_bp
 from .farm import farm_bp
 from .asset import asset_bp
@@ -8,9 +9,11 @@ from .ai import ai_bp
 from .visitor import visitor_bp
 from .growth import growth_bp
 from .carbon import carbon_bp
+from .drone import drone_bp
 
 def register_routes(app):
     app.register_blueprint(health_bp)
+    app.register_blueprint(health_live_bp)
     app.register_blueprint(farmer_bp)
     app.register_blueprint(farm_bp)
     app.register_blueprint(asset_bp)
@@ -20,4 +23,5 @@ def register_routes(app):
     app.register_blueprint(visitor_bp)
     app.register_blueprint(growth_bp)
     app.register_blueprint(carbon_bp)
+    app.register_blueprint(drone_bp)
     
