@@ -18,7 +18,7 @@ def simulation_loop():
         telemetry = telemetry_engine.generate_telemetry()
 
         if telemetry:
-            # For now: log (next step = DB + services)
+            # For now: log
             print("[SIMULATION]", telemetry)
 
         time.sleep(2)  # scan interval (seconds)

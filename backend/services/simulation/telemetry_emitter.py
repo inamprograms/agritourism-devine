@@ -40,7 +40,7 @@ class TelemetryEmitter:
         # Persistent state (credibility)
         TelemetryRepository.save_telemetry(
             telemetry=telemetry,
-            farm_id=101  # later link to real farm
+            farm_id=101  # later link to dynamic real farm
         )
         
         return telemetry
