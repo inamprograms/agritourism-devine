@@ -14,6 +14,10 @@ class TelemetryEmitter:
         self.db = supabase_client
 
     def generate_telemetry(self):
+        
+        # Move the drone first
+        self.drone.tick()
+        # scan if ready
         if not self.drone.should_scan():
             return None
 
