@@ -39,6 +39,7 @@ class TelemetryEmitter:
         
         # Store live state for APIs / UI
         SIMULATION_STATE["drone"] = telemetry
+        SIMULATION_STATE["zones"] = self.farm.zones
         SIMULATION_STATE["last_updated"] = telemetry["timestamp"]
         
         # Persistent state (credibility)
