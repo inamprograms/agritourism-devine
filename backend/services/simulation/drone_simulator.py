@@ -50,3 +50,7 @@ class DroneSimulator:
         if self.status == "RETURNING":
             self.status = "IDLE"
             self.battery = 100
+            
+            self.x = 0
+            self.y = 0
+            self.status = "FLYING"

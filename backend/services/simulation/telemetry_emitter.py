@@ -12,12 +12,12 @@ class TelemetryEmitter:
         self.farm = FarmWorld()
         self.drone = DroneSimulator(self.farm)
         self.db = supabase_client
-
+    
     def generate_telemetry(self):
         
         # Move the drone first
         self.drone.tick()
-        # scan if ready
+        # scan if ready after 5 sec
         if not self.drone.should_scan():
             return None
 
