@@ -13,6 +13,8 @@ class DroneSimulator:
         self.status = "IDLE"
         self.last_scan_time = None
         self.step_size = 10
+        self.low_battery_threshold = 20
+        self.decision_state = "PATROL"
 
     def start_mission(self):
         self.status = "FLYING"
@@ -26,6 +28,10 @@ class DroneSimulator:
 
         if self.y >= self.farm.height:
             self.status = "RETURNING"
+        
+        if self.battery <= self.low_battery_threshold:
+            self.status = "RETURNING"
+            self.decision_state = "LOW_BATTERY_RETURN"
 
         self.battery -= 0.5
 
@@ -44,6 +50,8 @@ class DroneSimulator:
         if self.status == "IDLE":
             self.start_mission()
 
+        self.decision_state = "PATROL"
+        
         if self.status in ["FLYING", "SCANNING"]:
             self.move()
 
@@ -53,4 +61,5 @@ class DroneSimulator:
             
             self.x = 0
             self.y = 0
+            self.decision_state = "RECHARGED"
             self.status = "FLYING"
