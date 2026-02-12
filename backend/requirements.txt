@@ -3,3 +3,4 @@ flask-cors
 python-dotenv
 supabase
 groq
+flask-cors

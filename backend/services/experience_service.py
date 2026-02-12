@@ -25,16 +25,20 @@ class ExperienceService:
         except APIError as e:
             return {"error": str(e)}, 500
 
-    def list_experiences(self, farm_id, level=None):
+    def list_experiences(self, farm_id, level=None, enabled_only=None):
         """
-        List experiences for a farm, optionally filtered by level.
+        List experiences for a farm, optionally filtered by level or enabled status.
         """
         try:
             query = supabase.table("experiences").select("*").eq("farm_id", farm_id)
-            if level:
-                query = query.eq("level", level)
-            response = query.execute()
             
+            if level is not None:
+                query = query.eq("level", level)
+
+            if enabled_only is not None:
+                query = query.eq("enabled", enabled_only)
+                
+            response = query.execute()
             return response.data or []
         
         except APIError as e:

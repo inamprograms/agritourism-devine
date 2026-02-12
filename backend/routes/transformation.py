@@ -23,9 +23,8 @@ def transform_farm(farm_id):
     
     # Save experiences for farm
     experience_service.save_experiences(farm_id, experiences)
-    
+
     return jsonify({
         "farm_id": farm_id,
-        "generated_experiences": experiences,
-        "ai_suggestions": []  # AI part comes later
-    })
+        "message": "Experiences generated successfully"
+    }), 200

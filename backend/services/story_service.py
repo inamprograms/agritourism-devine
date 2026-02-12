@@ -27,7 +27,7 @@ class AIStoryService:
         )
 
         return {
-            "story_response": response.choices[0].message.content
+            "ai_response": response.choices[0].message.content
         }
 
     def _system_prompt(self, language):

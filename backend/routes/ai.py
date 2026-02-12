@@ -20,7 +20,7 @@ def ai_interaction(farm_id):
     
     transformation_service = TransformationService()
 
-    experiences = transformation_service.generate_experiences(farm_input)
+    experiences = experience_service.list_experiences(farm_id)
     ai_summary = transformation_service.get_ai_summary(experiences)
 
     ai_response = ai_service.advise(
@@ -31,7 +31,6 @@ def ai_interaction(farm_id):
 
     return {
         "farm_id": farm_id,
-        "experiences": experiences,
         "ai": ai_response
     }
 
@@ -105,13 +104,12 @@ def generate_experience_story(farm_id, experience_id):
     }
 
     # Call AI Story Generator
-    story_response = story_service.generate_story(
+    ai_response = story_service.generate_story(
         experience_details=experience_details,
         language=language
     )
-
     return {
         "experience_id": experience_id,
-        "story": story_response
+        "ai": ai_response
     }
 
