@@ -47,8 +47,8 @@ class DroneSimulator:
         return zone
 
     def tick(self):
-        if self.status == "IDLE":
-            self.start_mission()
+        # if self.status == "IDLE":
+            # self.start_mission()
 
         self.decision_state = "PATROL"
         
@@ -58,8 +58,6 @@ class DroneSimulator:
         if self.status == "RETURNING":
             self.status = "IDLE"
             self.battery = 100
-            
             self.x = 0
             self.y = 0
             self.decision_state = "RECHARGED"
-            self.status = "FLYING"

@@ -2,26 +2,41 @@ from app import create_app
 import threading
 import time
 
-from services.simulation.telemetry_emitter import TelemetryEmitter
+from services.simulation.telemetry_emitter import telemetry_engine
+from services.simulation.sim_state import SIMULATION_STATE
 
 app = create_app()
 
-# --- Digital Twin Simulation Setup ---
-telemetry_engine = TelemetryEmitter()
+# # --- Digital Twin Simulation Setup ---
+# telemetry_engine = TelemetryEmitter()
 
+# def simulation_loop():
+#     """
+#     Autonomous drone simulation loop
+#     Runs independently of HTTP requests
+#     """
+#     while True:
+#         telemetry = telemetry_engine.generate_telemetry()
+
+#         if telemetry:
+#             # For now: log
+#             print("[SIMULATION]", telemetry)
+
+#         time.sleep(2)  # scan interval (seconds)
+        
 def simulation_loop():
-    """
-    Autonomous drone simulation loop
-    Runs independently of HTTP requests
-    """
     while True:
+        if not SIMULATION_STATE["mission"]["is_running"]:
+            time.sleep(1)
+            continue
+
         telemetry = telemetry_engine.generate_telemetry()
 
         if telemetry:
             # For now: log
             print("[SIMULATION]", telemetry)
+        time.sleep(2)
 
-        time.sleep(2)  # scan interval (seconds)
 
 # Start simulation ONLY once (important for Flask reloads)
 if not app.debug or not threading.current_thread().name == "MainThread":

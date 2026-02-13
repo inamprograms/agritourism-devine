@@ -17,6 +17,8 @@ class TelemetryEmitter:
     
     def generate_telemetry(self):
         
+        if not SIMULATION_STATE["mission"]["is_running"]:
+            return None
         # Move the drone first
         self.drone.tick()
         # scan if ready after 5 sec
@@ -48,7 +50,8 @@ class TelemetryEmitter:
         if mission["completion_percentage"] >= 100:
             mission["mission_status"] = "COMPLETED"
             self.drone.decision_state = "MISSION_COMPLETED"
-
+            SIMULATION_STATE["mission"]["is_running"] = False
+            self.drone.status = "IDLE"
 
         telemetry = {
             "timestamp": datetime.utcnow().isoformat(),
@@ -82,3 +85,4 @@ class TelemetryEmitter:
         elif ndvi > 0.4:
             return "Moderate"
         return "Poor"
+telemetry_engine = TelemetryEmitter()

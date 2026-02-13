@@ -9,6 +9,7 @@ SIMULATION_STATE = {
         "scanned_zones": set(),
         "poor_zones_detected": set(),
         "mission_status": "NOT_STARTED",
-        "completion_percentage": 0
+        "completion_percentage": 0,
+        "is_running": False
     }
 }
