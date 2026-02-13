@@ -7,23 +7,7 @@ from services.simulation.sim_state import SIMULATION_STATE
 
 app = create_app()
 
-# # --- Digital Twin Simulation Setup ---
-# telemetry_engine = TelemetryEmitter()
-
-# def simulation_loop():
-#     """
-#     Autonomous drone simulation loop
-#     Runs independently of HTTP requests
-#     """
-#     while True:
-#         telemetry = telemetry_engine.generate_telemetry()
-
-#         if telemetry:
-#             # For now: log
-#             print("[SIMULATION]", telemetry)
-
-#         time.sleep(2)  # scan interval (seconds)
-        
+# # --- Digital Twin Simulation ---
 def simulation_loop():
     while True:
         if not SIMULATION_STATE["mission"]["is_running"]:
