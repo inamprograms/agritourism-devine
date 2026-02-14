@@ -7,4 +7,4 @@ We help organization to generate carbon credits and promote sustainable tourism 
 <!-- - **Frontend:** [Setup Instructions](./frontend/README.md) -->
 - **Backend:** [Setup Instructions](./backend/README.md)<br>
 
-# Live Demo: [Agritourism Devine](https://agritourismdevine.lovable.app/)
+# Live Demo: [Agritourism Devine](https://agritourismdevine.duckdns.org/)
