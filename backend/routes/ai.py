@@ -1,10 +1,35 @@
 from flask import Blueprint, request
-from services.ai_service import AIFarmAdvisorService
+from services.transform_ai_service import transform_advisor_service, story_service
 from services.transformation_service import TransformationService
 from services.experience_service import experience_service
 
 ai_bp = Blueprint("ai", __name__)
-ai_service = AIFarmAdvisorService()
+
+@ai_bp.route("/ai/chat", methods=["POST"])
+def ai_chat():
+   
+    data = request.get_json() or {}
+    
+    user_message = data.get("message", "")
+    language = data.get("language", "en")
+    # Frontend sends conversation history as a list of {role, content} objects
+    # This lets the AI remember what was said earlier in the session
+    history = data.get("history", [])
+    
+    if not user_message:
+        return {"error": "message is required"}, 400
+    
+    from services.ai_chat_service import AIChatService
+    chat_service = AIChatService()
+    
+    response = chat_service.chat(
+        message=user_message,
+        history=history,
+        language=language
+    )
+    return {
+        "response": response
+    }
 
 @ai_bp.route("/farms/<farm_id>/ai", methods=["POST"])
 def ai_interaction(farm_id):
@@ -23,7 +48,7 @@ def ai_interaction(farm_id):
     experiences = experience_service.list_experiences(farm_id)
     ai_summary = transformation_service.get_ai_summary(experiences)
 
-    ai_response = ai_service.advise(
+    ai_response = transform_advisor_service.advise(
         user_prompt=user_prompt,
         transformation_summary=ai_summary,
         language=language
@@ -49,15 +74,12 @@ def ai_explain_experience(farm_id, experience_id):
 
     data = request.get_json() or {}
     language = data.get("language", "en")
-
     user_prompt = data.get("user_prompt", "")
-
-    # 2. Fetch experience from DB  experience_id
+    
     experience = experience_service.get_experience_by_id(experience_id)
     if not experience:
         return {"error": "Experience not found"}, 404
 
-    # 3. Prepare clean experience summary for AI
     experience_details = {
         "title": experience["title"],
         "type": experience["type"],
@@ -66,9 +88,7 @@ def ai_explain_experience(farm_id, experience_id):
         "enabled": experience["enabled"]
     }
 
-    # 4. Call AI
-    ai_service = AIFarmAdvisorService()
-    ai_response = ai_service.advise_experience(
+    ai_response = transform_advisor_service.advise_experience(
         user_prompt=user_prompt,
         experience_details=experience_details,
         language=language
@@ -84,17 +104,13 @@ def generate_experience_story(farm_id, experience_id):
     """
     Endpoint to generate visitor-friendly story for a single experience.
     """
-    from services.story_service import story_service
-
     data = request.get_json() or {}
     language = data.get("language", "en")
 
-    # Fetch experience from DB
     experience = experience_service.get_experience_by_id(experience_id)
     if not experience:
         return {"error": "Experience not found"}, 404
 
-    # Prepare minimal experience info for story
     experience_details = {
         "title": experience["title"],
         "type": experience["type"],
@@ -103,7 +119,6 @@ def generate_experience_story(farm_id, experience_id):
         "enabled": experience["enabled"]
     }
 
-    # Call AI Story Generator
     ai_response = story_service.generate_story(
         experience_details=experience_details,
         language=language
@@ -112,4 +127,3 @@ def generate_experience_story(farm_id, experience_id):
         "experience_id": experience_id,
         "ai": ai_response
     }
-
