@@ -11,6 +11,7 @@ def ai_chat():
     data = request.get_json() or {}
     
     user_message = data.get("message", "")
+    user_message = f"[User message]: {user_message}"
     language = data.get("language", "en")
     # Frontend sends conversation history as a list of {role, content} objects
     # This lets the AI remember what was said earlier in the session
