@@ -18,12 +18,14 @@ class BrEmbeddingProvider(BaseEmbeddingProvider):
         
         body = {"inputText": text}
         
-        response = self.client.invoke_model(
-            modelId=self.model,
-            body=json.dumps(body),
-            contentType="application/json",
-            accept="application/json",
-        )
-        
-        response = json.loads(response["body"].read())
-        return response["embedding"]
+        try:
+            response = self.client.invoke_model(
+                modelId=self.model,
+                body=json.dumps(body),
+                contentType="application/json",
+                accept="application/json",
+            )  
+            response_body = json.loads(response["body"].read())
+            return response_body["embedding"]
+        except Exception as e:
+            raise ValueError(f"Bedrock embedding error: {e}")
