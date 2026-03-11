@@ -22,6 +22,7 @@ class BaseAIProvider(ABC):
     ) -> str:
         """
         Send a prompt to the AI and return the text response.
+        Single-turn completion.
         
         Args:
             system_prompt: Instructions that define AI behavior/role
@@ -31,5 +32,25 @@ class BaseAIProvider(ABC):
             
         Returns:
             str: The AI's text response
+        """
+        pass
+    
+    @abstractmethod
+    def chat(
+        self,
+        messages: list,
+        temperature: float = 0.4,
+        max_tokens: int = 1500
+    ) -> str:
+        """
+        Multi-turn chat with structured messages list.
+        
+        messages format:
+        [
+            {"role": "system", "content": "..."},
+            {"role": "user", "content": "..."},
+            {"role": "assistant", "content": "..."},
+            {"role": "user", "content": "..."}
+        ]
         """
         pass

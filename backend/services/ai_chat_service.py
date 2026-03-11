@@ -1,5 +1,8 @@
+import time
 from services.ai.factory import get_ai_provider
 from services.ai.prompts.system_prompts import ai_assistant_system_prompt
+from services.ai.guardrails import GuardrailsService
+from services.ai.interaction_logger import InteractionLogger
 from config import Config
 
 
@@ -21,49 +24,82 @@ class AIChatService:
     def __init__(self):
         self.provider = get_ai_provider()
         self.temperature = Config.AI_TEMPERATURE
-
-    def chat(self, message: str, history: list, language: str = "en") -> str:
+        self.guardrails = GuardrailsService()
+        self.logger = InteractionLogger()
+        
+    def chat(self, message: str, history: list, language: str = "en", session_id: str = "anonymous") -> str:
         """
         Process a conversational message with history context.
         
         history format: [{"role": "user", "content": "..."}, 
                          {"role": "assistant", "content": "..."}]
         """
-        system = ai_assistant_system_prompt(language)
+        # 1. Guardrails check — before anything reaches the model
+        self.guardrails.validate(message)
         
-        # Build the full conversation as context for the AI
-        # We append the new message at the end
-        conversation_context = self._build_conversation_context(history, message)
+        # 2. Build structured messages list
+        messages = self._build_messages(history, message, language)
         
-        response = self.provider.complete(
-            system_prompt=system,
-            user_prompt=conversation_context,
+        # 3. Call model and measure latency
+        start = time.time()
+        response = self.provider.chat(
+            messages=messages,
             temperature=self.temperature,
             max_tokens=1000,
         )
+        latency_ms = int((time.time() - start) * 1000)
         
-        return response.strip()
+        # 4. Validate response exists
+        if not response or not response.strip():
+            raise ValueError("Model returned empty response")
+        
+        result = response.strip()
+        
+        # 5. Log interaction
+        self.logger.log(
+            session_id=session_id,
+            user_message=message,
+            model_response=result,
+            language=language,
+            latency_ms=latency_ms,
+        )
+        
+        return result
+    
+    def _build_messages(self, history: list, new_message: str, language: str) -> list:
+        """
+        Build structured messages list for AI provider.
+        
+        This is the industry standard format.
+        
+        Layer 2 RAG injection point:
+        After history, before new_message — insert retrieved documents as:
+        {"role": "system", "content": "Relevant context: {retrieved_docs}"}
+        """
+        messages = []
 
-    def _build_conversation_context(self, history: list, new_message: str) -> str:
-        """
-        Format conversation history into a single prompt string.
-        
-        Why not pass history as separate messages?
-        Our BaseAIProvider.complete() takes a single user_prompt string —
-        this keeps the provider interface simple. We format history as 
-        context text instead. This works well for single-turn providers
-        and is easy to upgrade later if needed.
-        """
-        if not history:
-            return new_message
-        
-        # Build readable conversation history
-        lines = ["Previous conversation:"]
-        for turn in history[-6:]:  # Last 6 turns max - keeps context window manageable
-            role_label = "User" if turn["role"] == "user" else "Assistant"
-            lines.append(f"{role_label}: {turn['content']}")
-        
-        lines.append(f"\nFarmer's new message: {new_message}")
-        lines.append("\nContinue the conversation naturally, referring to previous context where relevant.")
-        
-        return "\n".join(lines)
+        # System prompt 
+        messages.append({
+            "role": "system",
+            "content": ai_assistant_system_prompt(language)
+        })
+
+        # Conversation history — last 6 turns max
+        for turn in history[-6:]:
+            messages.append({
+                "role": turn["role"],
+                "content": turn["content"]
+            })
+
+        # RAG injection point - Layer 2 will add here
+        # messages.append({"role": "system", "content": f"Relevant context:\n{retrieved_docs}"})
+
+        # Current user message — always last
+        messages.append({
+            "role": "user",
+            "content": new_message
+        })
+
+        return messages
+    
+chat_service = AIChatService()

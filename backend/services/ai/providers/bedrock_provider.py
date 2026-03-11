@@ -59,3 +59,41 @@ class BedrockProvider(BaseAIProvider):
         
         # Nova returns content in this structure
         return response_body["output"]["message"]["content"][0]["text"]
+    
+    def chat(
+        self,
+        messages: list,
+        temperature: float = 0.4,
+        max_tokens: int = 1500
+    ) -> str:
+        # Bedrock requires system messages separated from conversation
+        # Extract system message from list, pass rest as conversation
+        system_messages = [
+            {"text": m["content"]}
+            for m in messages
+            if m["role"] == "system"
+        ]
+        conversation = [
+            {"role": m["role"], "content": m["content"]}
+            for m in messages
+            if m["role"] != "system"
+        ]
+
+        body = {
+            "messages": conversation,
+            "system": system_messages,
+            "inferenceConfig": {
+                "temperature": temperature,
+                "maxTokens": max_tokens,
+            }
+        }
+
+        response = self.client.invoke_model(
+            modelId=self.model,
+            body=json.dumps(body),
+            contentType="application/json",
+            accept="application/json",
+        )
+
+        response_body = json.loads(response["body"].read())
+        return response_body["output"]["message"]["content"][0]["text"]

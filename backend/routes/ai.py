@@ -2,6 +2,7 @@ from flask import Blueprint, request
 from services.transform_ai_service import transform_advisor_service, story_service
 from services.transformation_service import TransformationService
 from services.experience_service import experience_service
+from services.ai_chat_service import chat_service
 
 ai_bp = Blueprint("ai", __name__)
 
@@ -11,26 +12,27 @@ def ai_chat():
     data = request.get_json() or {}
     
     user_message = data.get("message", "")
-    user_message = f"[User message]: {user_message}"
     language = data.get("language", "en")
     # Frontend sends conversation history as a list of {role, content} objects
     # This lets the AI remember what was said earlier in the session
     history = data.get("history", [])
+    # Session ID from frontend - used for logging
+    # Later: replace with real user ID from auth
+    session_id = data.get("session_id", "anonymous")
     
-    if not user_message:
-        return {"error": "message is required"}, 400
-    
-    from services.ai_chat_service import AIChatService
-    chat_service = AIChatService()
-    
-    response = chat_service.chat(
-        message=user_message,
-        history=history,
-        language=language
-    )
-    return {
-        "response": response
-    }
+    try:
+        response = chat_service.chat(
+            message=user_message,
+            history=history,
+            language=language,
+            session_id=session_id,
+        )
+        return {
+            "response": response
+        }
+    except ValueError as e:
+        # Guardrails rejection - return 400 with clear message
+        return {"error": str(e)}, 400
 
 @ai_bp.route("/farms/<farm_id>/ai", methods=["POST"])
 def ai_interaction(farm_id):

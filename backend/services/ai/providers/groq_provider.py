@@ -30,3 +30,18 @@ class GroqProvider(BaseAIProvider):
             max_tokens=max_tokens,
         )
         return response.choices[0].message.content
+    
+    def chat(
+        self,
+        messages: list,
+        temperature: float = 0.4,
+        max_tokens: int = 1500
+    ) -> str:
+        # Groq natively supports messages list, direct pass-through
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
+        return response.choices[0].message.content
