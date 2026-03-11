@@ -29,3 +29,8 @@ class Config:
     # 0.0 = very focused/deterministic, 1.0 = more creative
     # For farm advisory: 0.4 is a good balance
     AI_TEMPERATURE = float(os.getenv("AI_TEMPERATURE", "0.4"))
+    
+    EMBEDDING_PROVIDER = os.getenv("EMBEDDING_PROVIDER", "huggingface")  # or bedrock 
+    HUGGINGFACE_API_KEY = os.getenv("HUGGINGFACE_API_KEY")
+    HUGGINGFACE_MODEL = os.getenv("HUGGINGFACE_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
+    BEDROCK_EMBEDDING_MODEL = os.getenv("BEDROCK_EMBEDDING_MODEL", "amazon.titan-embed-text-v2:0")
