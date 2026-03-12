@@ -1,10 +1,22 @@
 from services.ai.embeddings.factory import get_embedding_provider
 from data.supabase_client import supabase
 import os
+from docx import Document
+from pypdf import PdfReader
 
 def load_document(file_path: str) -> str:
-    with open(file_path, "r", encoding="utf-8") as file:
-        return file.read()
+    ext = os.path.splitext(file_path)[1].lower()
+    if ext in [".txt", ".md"]:
+        with open(file_path, "r", encoding="utf-8") as file:
+            return file.read()
+    elif ext == ".pdf":
+        reader = PdfReader(file_path)
+        return "\n".join(page.extract_text() for page in reader.pages if page.extract_text())
+    elif ext == ".docx":
+        doc = Document(file_path)            
+        return "\n".join(p.text for p in doc.paragraphs if p.text.strip())
+    else:
+        raise ValueError(f"Unsupported file format: {ext}")
 
 def chunk_text(text: str, chunk_size=500, overlap=100) -> list[str]:
     chunks = []   

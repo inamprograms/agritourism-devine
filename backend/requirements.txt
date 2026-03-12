@@ -4,3 +4,5 @@ python-dotenv
 supabase
 groq
 flask-cors
+python-docx
+pypdf
