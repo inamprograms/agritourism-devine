@@ -49,20 +49,36 @@ def ingest(file_path: str, category: str, target_audience: str, provider):
         except Exception as e:
             print(f"Failed chunk {index + 1}: {e}")
             continue
-    
+
+def ingest_folder(folder_path: str, category: str, target_audience: str, provider):
+    supported = [".txt", ".md", ".pdf", ".docx"]
+    files = [f for f in os.listdir(folder_path) if os.path.splitext(f)[1].lower() in supported]
+    print(f"Found {len(files)} files")    
+    for file in files:
+        file_path = os.path.join(folder_path, file)
+        try:
+            ingest(file_path, category, target_audience, provider)
+            print(f"Ingestion completed for file {file}")
+        except Exception as e:
+            print(f"Failed file {file}: {e}")
+            continue
     
 def main():
-    path = input("Enter file path: ").strip()
+    mode = input("Ingest single file or folder? (file/folder): ").strip().lower()
+    path = input("Enter path: ").strip()
     category = input("Enter category: ").strip()
     audience = input("Enter target audience: ").strip()
     provider = get_embedding_provider()
     
     try:
-        ingest(path, category, audience, provider)
-        # ingest("C:\\Users\\Dell\\Desktop\\test_doc.txt", "category", "audience")
+        if mode == "folder":
+            ingest_folder(path, category, audience, provider)
+            # ingest("C:\\Users\\Dell\\Desktop\\test_doc.txt", "category", "audience")
+        else:
+            ingest(path, category, audience, provider)
         print("Ingestion complete.")
     except FileNotFoundError:
-        print("Error: File not found.")
+        print("Error: Path not found.")
     except Exception as e:
         print(f"An error occurred: {e}")
 
