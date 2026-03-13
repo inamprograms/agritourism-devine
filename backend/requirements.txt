@@ -9,3 +9,4 @@ pypdf
 beautifulsoup4
 boto3
 gunicorn
+twilio
