@@ -1,0 +1,9 @@
+services:
+  backend:
+    build: ./backend
+    container_name: agritourism_backend
+    env_file:
+      - ./backend/.env
+    ports:
+      - "5000:5000"
+    restart: unless-stopped

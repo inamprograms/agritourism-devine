@@ -1,0 +1,37 @@
+services:
+  frontend:
+    build:
+      context: ../agritourismdevine
+      args:
+        VITE_API_BASE_URL: https://agritourismdevine.duckdns.org/api
+    container_name: agritourism_frontend
+    expose:
+      - "80"
+    restart: always
+
+  backend:
+    build: ./backend
+    container_name: agritourism_backend
+    env_file:
+      - ./backend/.env
+    expose:
+      - "5000"
+    restart: always
+
+  nginx:
+    image: nginx:latest
+    container_name: agritourism_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      - frontend
+      - backend
+    restart: always
+
+networks:
+  default:
+    name: agritourism_network
