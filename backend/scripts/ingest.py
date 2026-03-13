@@ -3,6 +3,8 @@ from data.supabase_client import supabase
 import os
 from docx import Document
 from pypdf import PdfReader
+from bs4 import BeautifulSoup
+import requests
 
 def load_document(file_path: str) -> str:
     ext = os.path.splitext(file_path)[1].lower()
@@ -17,6 +19,17 @@ def load_document(file_path: str) -> str:
         return "\n".join(p.text for p in doc.paragraphs if p.text.strip())
     else:
         raise ValueError(f"Unsupported file format: {ext}")
+    
+def load_from_url(url: str) -> str:
+    response = requests.get(url)
+    if response.status_code != 200:
+        raise ValueError(f"Failed to fetch URL: {response.status_code} - {url}")
+    soup = BeautifulSoup(response.content, "html.parser")
+    for tag in soup(["script", "style"]):
+        tag.decompose()
+    text = soup.get_text(separator="\n")
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    return "\n".join(lines)
 
 def chunk_text(text: str, chunk_size=500, overlap=100) -> list[str]:
     chunks = []   
@@ -32,6 +45,9 @@ def ingest(file_path: str, category: str, target_audience: str, provider):
     document_name = os.path.basename(file_path)
     content = load_document(file_path)
     print(f"Loaded {len(content)} characters")
+    ingest_content(content, document_name, category, target_audience, provider)
+    
+def ingest_content(content: str, document_name: str, category: str, target_audience: str, provider):
     chunks = chunk_text(content)
     print(f"Created {len(chunks)} chunks")
     for index, chunk in enumerate(chunks):
@@ -64,7 +80,7 @@ def ingest_folder(folder_path: str, category: str, target_audience: str, provide
             continue
     
 def main():
-    mode = input("Ingest single file or folder? (file/folder): ").strip().lower()
+    mode = input("Ingest single file or folder or Webpage URL? (file/folder/url): ").strip().lower()
     path = input("Enter path: ").strip()
     category = input("Enter category: ").strip()
     audience = input("Enter target audience: ").strip()
@@ -74,8 +90,11 @@ def main():
         if mode == "folder":
             ingest_folder(path, category, audience, provider)
             # ingest("C:\\Users\\Dell\\Desktop\\test_doc.txt", "category", "audience")
-        else:
+        elif mode == "file":
             ingest(path, category, audience, provider)
+        elif mode == "url":
+            content = load_from_url(path)
+            ingest_content(content, path, category, audience, provider)
         print("Ingestion complete.")
     except FileNotFoundError:
         print("Error: Path not found.")

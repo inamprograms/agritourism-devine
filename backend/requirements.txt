@@ -6,3 +6,4 @@ groq
 flask-cors
 python-docx
 pypdf
+beautifulsoup4
