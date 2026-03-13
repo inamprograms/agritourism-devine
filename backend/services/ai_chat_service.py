@@ -3,22 +3,23 @@ from services.ai.factory import get_ai_provider
 from services.ai.prompts.system_prompts import ai_assistant_system_prompt
 from services.ai.guardrails import GuardrailsService
 from services.ai.interaction_logger import InteractionLogger
+from services.ai.retriever import ContextRetriever
 from config import Config
 
 
 class AIChatService:
     """
-    Layer 1 AI Assistant Service.
-    
-    This is NOT the transform advisor — this is the platform-wide
-    conversational assistant that lives on the AI Assistant page.
-    
-    Key difference from AIFarmAdvisorService:
-    - Supports multi-turn conversation history
-    - Returns plain text (not structured JSON) — it's chat
-    - Has a broader scope: platform features, agritourism concepts,
-      carbon credits, getting started guidance
-    - Designed for farmers, investors, and partners
+    AI Assistant Service.
+
+    A platform-wide conversational AI assistant with multi-turn context and
+    retrieval-augmented generation (RAG) support. 
+
+    Key features:
+    - Multi-turn conversation history support (last N turns)
+    - RAG-enabled: injects relevant context from the knowledge base
+    - Returns plain text responses for general chat
+    - Covers platform features, agritourism concepts, carbon credits, and guidance
+    - Logs interactions and enforces guardrails for safety and consistency
     """
 
     def __init__(self):
@@ -26,13 +27,36 @@ class AIChatService:
         self.temperature = Config.AI_TEMPERATURE
         self.guardrails = GuardrailsService()
         self.logger = InteractionLogger()
+        self.retriever = ContextRetriever()
         
     def chat(self, message: str, history: list, language: str = "en", session_id: str = "anonymous") -> str:
         """
-        Process a conversational message with history context.
-        
-        history format: [{"role": "user", "content": "..."}, 
-                         {"role": "assistant", "content": "..."}]
+        Process a user message through the AI assistant with RAG context and multi-turn history.
+
+        Steps performed:
+        1. Validate input using guardrails.
+        2. Retrieve relevant context from knowledge base (RAG).
+        3. Build structured messages including:
+        - System prompt
+        - RAG context (if any)
+        - Last N turns of conversation history
+        - Current user message
+        4. Call AI model with structured messages.
+        5. Measure latency and log interaction details.
+        6. Return model-generated response as plain text.
+
+        Args:
+            message (str): The user's current message.
+            history (list[dict]): Conversation history, each dict with keys 'role' and 'content'.
+            language (str, optional): Language of the conversation. Defaults to "en".
+            session_id (str, optional): Identifier for logging and session tracking. Defaults to "anonymous".
+
+        Returns:
+            str: AI-generated response to the user message.
+
+        Raises:
+            ValueError: If the model returns an empty response.
+            Exception: If guardrails or AI provider fail.
         """
         # 1. Guardrails check — before anything reaches the model
         self.guardrails.validate(message)
@@ -69,12 +93,6 @@ class AIChatService:
     def _build_messages(self, history: list, new_message: str, language: str) -> list:
         """
         Build structured messages list for AI provider.
-        
-        This is the industry standard format.
-        
-        Layer 2 RAG injection point:
-        After history, before new_message — insert retrieved documents as:
-        {"role": "system", "content": "Relevant context: {retrieved_docs}"}
         """
         messages = []
 
@@ -83,18 +101,26 @@ class AIChatService:
             "role": "system",
             "content": ai_assistant_system_prompt(language)
         })
+        
+        # RAG retrieval point 
+        retrieved_context = self.retriever.retrieve(new_message)
+    
+        # RAG injection point 
+        if retrieved_context:
+            context = "\n\n".join(retrieved_context)
+            messages.append({
+                "role": "system",
+                "content": f"Relevant context from knowledge base:\n\n{context}"
+            })
 
-        # Conversation history — last 6 turns max
+        # Conversation history - last 6 turns max
         for turn in history[-6:]:
             messages.append({
                 "role": turn["role"],
                 "content": turn["content"]
             })
 
-        # RAG injection point - Layer 2 will add here
-        # messages.append({"role": "system", "content": f"Relevant context:\n{retrieved_docs}"})
-
-        # Current user message — always last
+        # Current user message
         messages.append({
             "role": "user",
             "content": new_message
