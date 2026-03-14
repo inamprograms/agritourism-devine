@@ -4,6 +4,8 @@ services:
       context: ../agritourismdevine
       args:
         VITE_API_BASE_URL: https://agritourismdevine.duckdns.org/api
+        VITE_PUBLIC_POSTHOG_KEY: ${VITE_PUBLIC_POSTHOG_KEY}
+        VITE_PUBLIC_POSTHOG_HOST: ${VITE_PUBLIC_POSTHOG_HOST}
     container_name: agritourism_frontend
     expose:
       - "80"
