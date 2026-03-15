@@ -14,7 +14,8 @@ def webhook():
             message=incoming_msg,
             history=[],
             language="en",
-            session_id=sender
+            session_id=sender,
+            source="whatsapp"
         )
     except ValueError as e:
         response_text = str(e)

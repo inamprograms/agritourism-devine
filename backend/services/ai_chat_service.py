@@ -29,7 +29,7 @@ class AIChatService:
         self.logger = InteractionLogger()
         self.retriever = ContextRetriever()
         
-    def chat(self, message: str, history: list, language: str = "en", session_id: str = "anonymous") -> str:
+    def chat(self, message: str, history: list, language: str = "en", session_id: str = "anonymous", source: str = "web") -> str:
         """
         Process a user message through the AI assistant with RAG context and multi-turn history.
 
@@ -62,7 +62,7 @@ class AIChatService:
         self.guardrails.validate(message)
         
         # 2. Build structured messages list
-        messages = self._build_messages(history, message, language)
+        messages, rag_hit = self._build_messages(history, message, language)
         
         # 3. Call model and measure latency
         start = time.time()
@@ -83,14 +83,17 @@ class AIChatService:
         self.logger.log(
             session_id=session_id,
             user_message=message,
-            model_response=result,
+            ai_response=result,
             language=language,
             latency_ms=latency_ms,
+            source=source,
+            rag_hit=rag_hit,
+            response_length=len(result.split()),
         )
         
         return result
     
-    def _build_messages(self, history: list, new_message: str, language: str) -> list:
+    def _build_messages(self, history: list, new_message: str, language: str) -> tuple[list, bool]:
         """
         Build structured messages list for AI provider.
         """
@@ -104,6 +107,7 @@ class AIChatService:
         
         # RAG retrieval point 
         retrieved_context = self.retriever.retrieve(new_message)
+        rag_hit = bool(retrieved_context)
     
         # RAG injection point 
         if retrieved_context:
@@ -126,6 +130,6 @@ class AIChatService:
             "content": new_message
         })
 
-        return messages
+        return messages, rag_hit
     
 chat_service = AIChatService()
