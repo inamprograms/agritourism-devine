@@ -62,7 +62,7 @@ class AIChatService:
         self.guardrails.validate(message)
         
         # 2. Build structured messages list
-        messages, rag_hit = self._build_messages(history, message, language)
+        messages, rag_hit, retrieved_context = self._build_messages(history, message, language)
         
         # 3. Call model and measure latency
         start = time.time()
@@ -89,11 +89,12 @@ class AIChatService:
             source=source,
             rag_hit=rag_hit,
             response_length=len(result.split()),
+            retrieved_context=retrieved_context,
         )
         
         return result
     
-    def _build_messages(self, history: list, new_message: str, language: str) -> tuple[list, bool]:
+    def _build_messages(self, history: list, new_message: str, language: str) -> tuple[list, bool, str | None]:
         """
         Build structured messages list for AI provider.
         """
@@ -108,10 +109,10 @@ class AIChatService:
         # RAG retrieval point 
         retrieved_context = self.retriever.retrieve(new_message)
         rag_hit = bool(retrieved_context)
-    
+        context = "\n\n".join(retrieved_context) if retrieved_context else None
+        
         # RAG injection point 
         if retrieved_context:
-            context = "\n\n".join(retrieved_context)
             messages.append({
                 "role": "system",
                 "content": f"Relevant context from knowledge base:\n\n{context}"
@@ -130,6 +131,6 @@ class AIChatService:
             "content": new_message
         })
 
-        return messages, rag_hit
+        return messages, rag_hit, context if rag_hit else None
     
 chat_service = AIChatService()

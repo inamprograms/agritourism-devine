@@ -18,6 +18,7 @@ class InteractionLogger:
         source: str = "web",
         rag_hit: bool = False,
         response_length: int = 0,
+        retrieved_context: str = None,
     ):
         try:
             supabase.table("ai_interaction_logs").insert({
@@ -29,6 +30,7 @@ class InteractionLogger:
                 "source": source,
                 "rag_hit": rag_hit,
                 "response_length": response_length,
+                "retrieved_context": retrieved_context,
             }).execute()
         except Exception as e:
             print(f"[AI_LOG_ERROR] Failed to log interaction: {e}")
@@ -43,5 +45,6 @@ class InteractionLogger:
         #     "source": source,
         #     "rag_hit": rag_hit,
         #     "response_length": response_length,
+        #     "retrieved_context": retrieved_context,
         # }
         # print(f"[AI_LOG] {json.dumps(record)}")

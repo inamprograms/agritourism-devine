@@ -10,3 +10,6 @@ beautifulsoup4
 boto3
 gunicorn
 twilio
+ragas
+openai
+datasets
