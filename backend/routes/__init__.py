@@ -11,6 +11,7 @@ from .growth import growth_bp
 from .carbon import carbon_bp
 from .drone import drone_bp
 from .whatsapp import whatsapp_bp
+from .platform import platform_bp
 
 def register_routes(app):
     app.register_blueprint(health_bp)
@@ -26,3 +27,4 @@ def register_routes(app):
     app.register_blueprint(carbon_bp)
     app.register_blueprint(drone_bp)
     app.register_blueprint(whatsapp_bp)
+    app.register_blueprint(platform_bp)
