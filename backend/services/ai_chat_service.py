@@ -1,9 +1,11 @@
 import time
+import threading
 from services.ai.factory import get_ai_provider
 from services.ai.prompts.system_prompts import ai_assistant_system_prompt
 from services.ai.guardrails import GuardrailsService
 from services.ai.interaction_logger import InteractionLogger
 from services.ai.retriever import ContextRetriever
+from services.ai.evaluator import evaluator_service
 from config import Config
 
 
@@ -50,6 +52,7 @@ class AIChatService:
             history (list[dict]): Conversation history, each dict with keys 'role' and 'content'.
             language (str, optional): Language of the conversation. Defaults to "en".
             session_id (str, optional): Identifier for logging and session tracking. Defaults to "anonymous".
+            source (str, optional): Channel source - 'web' or 'whatsapp'. Defaults to "web".
 
         Returns:
             str: AI-generated response to the user message.
@@ -80,7 +83,7 @@ class AIChatService:
         result = response.strip()
         
         # 5. Log interaction
-        self.logger.log(
+        log_id = self.logger.log(
             session_id=session_id,
             user_message=message,
             ai_response=result,
@@ -92,6 +95,13 @@ class AIChatService:
             retrieved_context=retrieved_context,
         )
         
+        if rag_hit and log_id and retrieved_context:
+            threading.Thread(
+                target=evaluator_service.evaluate_async,
+                args=(log_id, message, result, retrieved_context),
+                daemon=True
+            ).start()
+            
         return result
     
     def _build_messages(self, history: list, new_message: str, language: str) -> tuple[list, bool, str | None]:

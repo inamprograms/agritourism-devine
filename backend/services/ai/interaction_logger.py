@@ -19,9 +19,9 @@ class InteractionLogger:
         rag_hit: bool = False,
         response_length: int = 0,
         retrieved_context: str = None,
-    ):
+    ) -> str | None:
         try:
-            supabase.table("ai_interaction_logs").insert({
+            response = supabase.table("ai_interaction_logs").insert({
                 "session_id": session_id,
                 "user_message": user_message,
                 "ai_response": ai_response,
@@ -32,6 +32,7 @@ class InteractionLogger:
                 "response_length": response_length,
                 "retrieved_context": retrieved_context,
             }).execute()
+            return response.data[0]["id"] if response.data else None
         except Exception as e:
             print(f"[AI_LOG_ERROR] Failed to log interaction: {e}")
             
