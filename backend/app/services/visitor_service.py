@@ -1,7 +1,7 @@
 # services/visitor_service.py
 
-from data.supabase_client import supabase
-from data.schemas.visitor import visitor_schema
+from app.core.supabase import supabase
+from app.schemas.visitor import visitor_schema
 from postgrest import APIError
 
 class VisitorService:

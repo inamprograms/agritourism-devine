@@ -1,11 +1,11 @@
 import json
-from services.ai.factory import get_ai_provider
-from services.ai.prompts.system_prompts import (
+from app.services.ai.factory import get_ai_provider
+from app.services.ai.prompts.system_prompts import (
     farm_advisor_system_prompt,
     experience_advisor_system_prompt,
     story_generator_system_prompt,
 )
-from services.ai.prompts.user_prompts import (
+from app.services.ai.prompts.user_prompts import (
     farm_advisory_prompt,
     experience_advisory_prompt,
     story_generation_prompt,

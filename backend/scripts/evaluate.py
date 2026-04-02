@@ -5,7 +5,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from openai import OpenAI
 from ragas.llms import llm_factory
 from ragas.metrics import DiscreteMetric
-from data.supabase_client import supabase
+from app.core.supabase import supabase
 from config import Config
 
 def get_unevaluated_logs():

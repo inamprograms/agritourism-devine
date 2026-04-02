@@ -1,7 +1,7 @@
 # routes/visitor.py
 
 from flask import Blueprint
-from services.visitor_service import visitor_service
+from app.services.visitor_service import visitor_service
 
 visitor_bp = Blueprint("visitor", __name__)
 

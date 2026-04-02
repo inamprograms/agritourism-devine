@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify
 
-from services.simulation.sim_state import SIMULATION_STATE
+from app.services.simulation.sim_state import SIMULATION_STATE
 
 health_bp = Blueprint("health", __name__)
 health_live_bp = Blueprint("health_live", __name__)

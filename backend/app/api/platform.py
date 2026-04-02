@@ -1,5 +1,5 @@
 from flask import Blueprint
-from data.supabase_client import supabase
+from app.core.supabase import supabase
 from datetime import date
 
 platform_bp = Blueprint("platform", __name__)

@@ -1,6 +1,6 @@
 from flask import Blueprint, request
 from twilio.twiml.messaging_response import MessagingResponse
-from services.ai_chat_service import chat_service
+from app.services.ai_chat_service import chat_service
 
 whatsapp_bp = Blueprint("whatsapp", __name__)
 

@@ -1,11 +1,11 @@
 import time
 import threading
-from services.ai.factory import get_ai_provider
-from services.ai.prompts.system_prompts import ai_assistant_system_prompt
-from services.ai.guardrails import GuardrailsService
-from services.ai.interaction_logger import InteractionLogger
-from services.ai.retriever import ContextRetriever
-from services.ai.evaluator import evaluator_service
+from app.services.ai.factory import get_ai_provider
+from app.services.ai.prompts.system_prompts import ai_assistant_system_prompt
+from app.services.ai.guardrails import GuardrailsService
+from app.services.ai.interaction_logger import InteractionLogger
+from app.services.ai.retriever import ContextRetriever
+from app.services.ai.evaluator import evaluator_service
 from config import Config
 
 

@@ -1,6 +1,6 @@
 import json
 from datetime import datetime, timezone
-from data.supabase_client import supabase
+from app.core.supabase import supabase
 
 class InteractionLogger:
     """

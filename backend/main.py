@@ -2,8 +2,8 @@ from app import create_app
 import threading
 import time
 
-from services.simulation.telemetry_emitter import telemetry_engine
-from services.simulation.sim_state import SIMULATION_STATE
+from app.services.simulation.telemetry_emitter import telemetry_engine
+from app.services.simulation.sim_state import SIMULATION_STATE
 
 app = create_app()
 

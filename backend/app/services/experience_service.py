@@ -1,7 +1,7 @@
 # services/experience_service.py
 
-from data.supabase_client import supabase
-from data.schemas.experience import experience_schema
+from app.core.supabase import supabase
+from app.schemas.experience import experience_schema
 from postgrest import APIError
 
 class ExperienceService:

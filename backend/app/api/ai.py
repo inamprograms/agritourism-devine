@@ -1,8 +1,8 @@
 from flask import Blueprint, request
-from services.transform_ai_service import transform_advisor_service, story_service
-from services.transformation_service import TransformationService
-from services.experience_service import experience_service
-from services.ai_chat_service import chat_service
+from app.services.transform_ai_service import transform_advisor_service, story_service
+from app.services.transformation_service import TransformationService
+from app.services.experience_service import experience_service
+from app.services.ai_chat_service import chat_service
 
 ai_bp = Blueprint("ai", __name__)
 

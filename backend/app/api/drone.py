@@ -1,8 +1,8 @@
 # routes/drone.py
 
 from flask import Blueprint, jsonify
-from services.simulation.sim_state import SIMULATION_STATE
-from services.simulation.telemetry_emitter import telemetry_engine
+from app.services.simulation.sim_state import SIMULATION_STATE
+from app.services.simulation.telemetry_emitter import telemetry_engine
 
 drone_bp = Blueprint("drone", __name__)
 

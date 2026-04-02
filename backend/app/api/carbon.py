@@ -1,8 +1,8 @@
 # routes/carbon_routes.py
 
 from flask import Blueprint, request, jsonify
-from services.carbon.carbon_service import CarbonService
-from data.schemas.carbon_schema import carbon_input_schema, carbon_output_schema
+from app.services.carbon.carbon_service import CarbonService
+from app.schemas.carbon_schema import carbon_input_schema, carbon_output_schema
 
 
 # Create blueprint

@@ -1,5 +1,5 @@
-from data.supabase_client import supabase
-from services.ai.embeddings.factory import get_embedding_provider
+from app.core.supabase import supabase
+from app.services.ai.embeddings.factory import get_embedding_provider
 
 class ContextRetriever:
     def __init__(self):

@@ -1,5 +1,5 @@
-from services.ai.embeddings.factory import get_embedding_provider
-from data.supabase_client import supabase
+from app.services.ai.embeddings.factory import get_embedding_provider
+from app.core.supabase import supabase
 import os
 from docx import Document
 from pypdf import PdfReader

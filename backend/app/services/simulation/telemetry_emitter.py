@@ -2,10 +2,10 @@
 # Simulation now feeds shared live state
 
 from datetime import datetime
-from services.simulation.sim_state import SIMULATION_STATE
-from services.simulation.telemetry_repository import TelemetryRepository
-from services.simulation.drone_simulator import DroneSimulator
-from services.simulation.farm_world import FarmWorld
+from app.services.simulation.sim_state import SIMULATION_STATE
+from app.services.simulation.telemetry_repository import TelemetryRepository
+from app.services.simulation.drone_simulator import DroneSimulator
+from app.services.simulation.farm_world import FarmWorld
 
 class TelemetryEmitter:
     def __init__(self, supabase_client=None):

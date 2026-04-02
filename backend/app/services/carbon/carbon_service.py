@@ -7,7 +7,7 @@ Pure rule-based calculation using IPCC methodology.
 No external API dependencies.
 """
 
-from services.carbon.carbon_rules import calculate_carbon_credits
+from app.services.carbon.carbon_rules import calculate_carbon_credits
 
 
 class CarbonService:

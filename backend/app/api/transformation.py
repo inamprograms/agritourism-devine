@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
-from services.transformation_service import TransformationService
-from services.experience_service import experience_service
+from app.services.transformation_service import TransformationService
+from app.services.experience_service import experience_service
 
 transformation_bp = Blueprint("transformation", __name__)
 transformation_service = TransformationService()

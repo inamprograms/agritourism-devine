@@ -2,7 +2,7 @@ from flask import Flask
 from flask_cors import CORS
 
 from config import Config
-from routes import register_routes
+from app.api import register_routes
 
 
 def create_app():

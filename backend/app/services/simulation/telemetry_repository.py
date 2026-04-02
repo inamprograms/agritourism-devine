@@ -1,6 +1,6 @@
 # services/simulation/telemetry_repository.py
 
-from data.supabase_client import supabase
+from app.core.supabase import supabase
 
 class TelemetryRepository:
     @staticmethod
