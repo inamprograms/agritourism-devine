@@ -16,6 +16,7 @@
 # =============================================================================
 
 import os
+from config import Config
 from supabase import create_client, Client
 from flask import g  # g = "global" Flask context — lives for one request only
 
@@ -36,8 +37,8 @@ def get_supabase_client(access_token: str = None) -> Client:
     Returns:
         Supabase Client instance
     """
-    url = os.environ.get("SUPABASE_URL")
-    anon_key = os.environ.get("SUPABASE_ANON_KEY")
+    url = Config.SUPABASE_URL
+    anon_key = Config.SUPABASE_ANON_KEY
 
     if not url or not anon_key:
         raise RuntimeError(
@@ -70,8 +71,8 @@ def get_admin_supabase_client() -> Client:
     Returns:
         Supabase Client instance with elevated privileges
     """
-    url = os.environ.get("SUPABASE_URL")
-    service_role_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+    url = Config.SUPABASE_URL
+    service_role_key = Config.SUPABASE_SERVICE_ROLE_KEY
 
     if not url or not service_role_key:
         raise RuntimeError(
