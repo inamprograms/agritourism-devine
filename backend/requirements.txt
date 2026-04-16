@@ -13,3 +13,5 @@ twilio
 ragas
 openai
 datasets
+PyJWT
+cryptography
