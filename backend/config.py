@@ -15,6 +15,13 @@ class Config:
     SUPABASE_URL = os.getenv("SUPABASE_URL")
     SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
     SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
+    
+    if IS_PRODUCTION:
+        if FLASK_SECRET_KEY == "dev-insecure-key":
+            raise RuntimeError("FLASK_SECRET_KEY must be set in production")
+
+        if not SUPABASE_SERVICE_ROLE_KEY:
+            raise RuntimeError("SUPABASE_SERVICE_ROLE_KEY must be set in production")
 
     # AI Configuration
     # To switch providers: change AI_PROVIDER value only
