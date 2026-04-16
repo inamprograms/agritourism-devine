@@ -10,6 +10,8 @@ class Config:
  
     FLASK_SECRET_KEY = os.getenv("FLASK_SECRET_KEY", "dev-insecure-key")
     
+    FRONTEND_URL = os.getenv("FRONTEND_URL", "")
+    
     SUPABASE_URL = os.getenv("SUPABASE_URL")
     SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
     SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
