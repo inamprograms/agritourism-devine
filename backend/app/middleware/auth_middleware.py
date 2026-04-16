@@ -208,8 +208,8 @@ def update_auth_cookies(response):
         _set_auth_cookies(response, tokens["access_token"], tokens["refresh_token"])
 
     elif hasattr(g, "_clear_auth_cookies") and g._clear_auth_cookies:
-        response.delete_cookie(ACCESS_TOKEN_COOKIE, path="/")
-        response.delete_cookie(REFRESH_TOKEN_COOKIE, path="/")
+        response.delete_cookie(ACCESS_TOKEN_COOKIE, path="/", samesite="None", secure=True)
+        response.delete_cookie(REFRESH_TOKEN_COOKIE, path="/", samesite="None", secure=True)
 
     return response
 

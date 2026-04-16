@@ -418,8 +418,8 @@ def signout():
         logger.error(f"Signout error: {str(e)}")
 
     response = make_response(jsonify({"message": "Signed out successfully"}), 200)
-    response.delete_cookie(ACCESS_TOKEN_COOKIE, path="/")
-    response.delete_cookie(REFRESH_TOKEN_COOKIE, path="/")
+    response.delete_cookie(ACCESS_TOKEN_COOKIE, path="/", samesite="None", secure=True)
+    response.delete_cookie(REFRESH_TOKEN_COOKIE, path="/", samesite="None", secure=True)
     return response
 
 
