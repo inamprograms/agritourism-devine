@@ -30,8 +30,8 @@ class AIChatService:
         self.guardrails = GuardrailsService()
         self.logger = InteractionLogger()
         self.retriever = ContextRetriever()
-        
-    def chat(self, message: str, history: list, language: str = "en", session_id: str = "anonymous", source: str = "web") -> str:
+    
+    def chat(self, message: str, history: list, language: str = "en", session_id: str = "anonymous", source: str = "web", user_id: str = None, ai_type: str = "assistant") -> str:
         """
         Process a user message through the AI assistant with RAG context and multi-turn history.
 
@@ -93,6 +93,8 @@ class AIChatService:
             rag_hit=rag_hit,
             response_length=len(result.split()),
             retrieved_context=retrieved_context,
+            user_id=user_id,
+            ai_type=ai_type,
         )
         
         if rag_hit and log_id and retrieved_context:

@@ -1,12 +1,15 @@
-from flask import Blueprint, request
+from flask import Blueprint, request, g
 from app.services.transform_ai_service import transform_advisor_service, story_service
 from app.services.transformation_service import TransformationService
 from app.services.experience_service import experience_service
 from app.services.ai_chat_service import chat_service
+from app.services.plan_service import plan_service
+from app.auth.decorators import require_auth
 
 ai_bp = Blueprint("ai", __name__)
 
 @ai_bp.route("/ai/chat", methods=["POST"])
+@require_auth
 def ai_chat():
    
     data = request.get_json() or {}
@@ -26,6 +29,8 @@ def ai_chat():
             history=history,
             language=language,
             session_id=session_id,
+            user_id=g.user_id,
+            ai_type="assistant",
         )
         return {
             "response": response
@@ -35,6 +40,7 @@ def ai_chat():
         return {"error": str(e)}, 400
 
 @ai_bp.route("/farms/<farm_id>/ai", methods=["POST"])
+@require_auth
 def ai_interaction(farm_id):
     data = request.json or {}
 
@@ -56,6 +62,7 @@ def ai_interaction(farm_id):
         transformation_summary=ai_summary,
         language=language
     )
+    plan_service.increment_ai_counter(g.user_id, "farm")
 
     return {
         "farm_id": farm_id,
@@ -63,6 +70,7 @@ def ai_interaction(farm_id):
     }
 
 @ai_bp.route("/farms/<int:farm_id>/experiences/<int:experience_id>/ai", methods=["POST"])
+@require_auth
 def ai_explain_experience(farm_id, experience_id):
     
     """
@@ -96,13 +104,15 @@ def ai_explain_experience(farm_id, experience_id):
         experience_details=experience_details,
         language=language
     )
-
+    plan_service.increment_ai_counter(g.user_id, "experience")
+    
     return {
         "experience_id": experience_id,
         "ai": ai_response
     }
     
 @ai_bp.route("/farms/<int:farm_id>/experiences/<int:experience_id>/story", methods=["POST"])
+@require_auth
 def generate_experience_story(farm_id, experience_id):
     """
     Endpoint to generate visitor-friendly story for a single experience.
@@ -126,6 +136,8 @@ def generate_experience_story(farm_id, experience_id):
         experience_details=experience_details,
         language=language
     )
+    plan_service.increment_ai_counter(g.user_id, "story")
+    
     return {
         "experience_id": experience_id,
         "ai": ai_response

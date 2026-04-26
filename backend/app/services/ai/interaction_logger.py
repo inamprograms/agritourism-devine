@@ -1,6 +1,7 @@
 import json
 from datetime import datetime, timezone
 from app.core.supabase import supabase
+from app.services.plan_service import plan_service
 
 class InteractionLogger:
     """
@@ -19,6 +20,8 @@ class InteractionLogger:
         rag_hit: bool = False,
         response_length: int = 0,
         retrieved_context: str = None,
+        user_id: str = None,
+        ai_type: str = "assistant",
     ) -> str | None:
         try:
             response = supabase.table("ai_interaction_logs").insert({
@@ -31,8 +34,16 @@ class InteractionLogger:
                 "rag_hit": rag_hit,
                 "response_length": response_length,
                 "retrieved_context": retrieved_context,
+                "user_id": user_id,
             }).execute()
-            return response.data[0]["id"] if response.data else None
+            
+            log_id = response.data[0]["id"] if response.data else None
+            # Increment counter if user is known
+            if user_id:
+                plan_service.increment_ai_counter(user_id, ai_type)
+                
+            return log_id
+
         except Exception as e:
             print(f"[AI_LOG_ERROR] Failed to log interaction: {e}")
             
