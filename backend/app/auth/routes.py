@@ -202,6 +202,14 @@ def signup():
                 {"id": str(user.id), "full_name": full_name, "role": role},
                 on_conflict="id"
             ).execute()
+            
+            # admin_client.table("user_plans").insert(
+            #     {"user_id": str(user.id)}
+            # ).execute()
+            admin_client.table("user_plans").upsert(
+                {"user_id": str(user.id)},
+                on_conflict="user_id"
+            ).execute()
 
             response = make_response(jsonify({
                 "message": "Account created successfully",
@@ -284,6 +292,15 @@ def confirm_email():
             on_conflict="id"
         ).execute()
 
+        # admin_client.table("user_plans").insert(
+        #     {"user_id": str(user.id)}
+        # ).execute()
+        
+        admin_client.table("user_plans").upsert(
+            {"user_id": str(user.id)},
+            on_conflict="user_id"
+        ).execute()
+                
         response = make_response(jsonify({
             "message": "Email confirmed. You are now signed in.",
             "user": {
@@ -367,6 +384,11 @@ def signin():
         admin_client.table("profiles").upsert(
             {"id": str(user.id), "full_name": full_name, "role": role},
             on_conflict="id"
+        ).execute()
+        
+        admin_client.table("user_plans").upsert(
+            {"user_id": str(user.id)},
+            on_conflict="user_id"
         ).execute()
 
         response = make_response(jsonify({
