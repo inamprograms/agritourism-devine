@@ -1,9 +1,11 @@
 from flask import Blueprint, jsonify, request
 from app.services.experience_service import experience_service
+from app.auth.decorators import require_auth
 
 experience_bp = Blueprint("experience", __name__)
 
 @experience_bp.route("/farms/<farm_id>/experiences", methods=["GET"])
+@require_auth
 def get_experiences(farm_id):
     level = request.args.get("level", type=int)
     enabled_only = request.args.get("enabled_only", type=bool)
@@ -15,6 +17,7 @@ def get_experiences(farm_id):
 
 # --- Enable experience ---
 @experience_bp.route("/farms/<farm_id>/experiences/enable", methods=["PATCH"])
+@require_auth
 def enable_experience(farm_id):
     data = request.get_json() or {}
     title = data.get("title")
@@ -32,6 +35,7 @@ def enable_experience(farm_id):
 
 # --- Disable experience ---
 @experience_bp.route("/farms/<farm_id>/experiences/disable", methods=["PATCH"])
+@require_auth
 def disable_experience(farm_id):
     data = request.get_json() or {}
     title = data.get("title")
