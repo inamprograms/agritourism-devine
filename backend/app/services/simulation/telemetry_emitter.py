@@ -8,7 +8,8 @@ from app.services.simulation.drone_simulator import DroneSimulator
 from app.services.simulation.farm_world import FarmWorld
 
 class TelemetryEmitter:
-    def __init__(self, supabase_client=None):
+    def __init__(self, farm_id: int = None, supabase_client=None):
+        self.farm_id = farm_id  # None = simulation only, real id = persists to that farm
         self.farm = FarmWorld()
         self.drone = DroneSimulator(self.farm)
         SIMULATION_STATE["mission"]["total_zones"] = len(self.farm.zones)
@@ -72,10 +73,11 @@ class TelemetryEmitter:
         SIMULATION_STATE["last_updated"] = telemetry["timestamp"]
         
         # Persistent state (credibility)
-        TelemetryRepository.save_telemetry(
-            telemetry=telemetry,
-            farm_id=101  # later link to dynamic real farm
-        )
+        if self.farm_id:
+            TelemetryRepository.save_telemetry(
+                telemetry=telemetry,
+                farm_id=self.farm_id
+            )
         
         return telemetry
 
@@ -85,4 +87,4 @@ class TelemetryEmitter:
         elif ndvi > 0.4:
             return "Moderate"
         return "Poor"
-telemetry_engine = TelemetryEmitter()
+telemetry_engine = TelemetryEmitter(farm_id=None)
