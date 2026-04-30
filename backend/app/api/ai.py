@@ -69,7 +69,7 @@ def ai_interaction(farm_id):
         "ai": ai_response
     }
 
-@ai_bp.route("/farms/<int:farm_id>/experiences/<int:experience_id>/ai", methods=["POST"])
+@ai_bp.route("/farms/<farm_id>/experiences/<experience_id>/ai", methods=["POST"])
 @require_auth
 def ai_explain_experience(farm_id, experience_id):
     
@@ -111,7 +111,7 @@ def ai_explain_experience(farm_id, experience_id):
         "ai": ai_response
     }
     
-@ai_bp.route("/farms/<int:farm_id>/experiences/<int:experience_id>/story", methods=["POST"])
+@ai_bp.route("/farms/<farm_id>/experiences/<experience_id>/story", methods=["POST"])
 @require_auth
 def generate_experience_story(farm_id, experience_id):
     """
