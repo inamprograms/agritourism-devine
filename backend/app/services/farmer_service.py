@@ -1,16 +1,12 @@
 from app.utils.supabase_client import get_admin_supabase_client
-from postgrest import APIError
 
 class FarmerService:
 
-    def get_or_create_for_user(self, user_id: str, farm_type: str) -> dict:
+    def _get_or_create_farmer(self, admin, user_id: str) -> str:
         """
-        Returns existing farmer+farm for this user, or creates them.
-        Called on every transform — safe to call repeatedly.
+        Internal helper: get existing farmer for user or create one.
+        Returns farmer_id. Uses actual user name from profiles table.
         """
-        admin = get_admin_supabase_client()
-
-        # Check if farmer exists for this user
         farmer_res = (
             admin.table("farmers")
             .select("id")
@@ -20,73 +16,50 @@ class FarmerService:
         )
 
         if farmer_res.data:
-            farmer_id = farmer_res.data[0]["id"]
-        else:
-            new_farmer = (
-                admin.table("farmers")
-                .insert({"user_id": user_id, "name": "My Farm"})
-                .execute()
-            )
-            farmer_id = new_farmer.data[0]["id"]
+            return farmer_res.data[0]["id"]
 
-        # Check if farm exists for this farmer
-        farm_res = (
-            admin.table("farms")
-            .select("id")
-            .eq("farmer_id", farmer_id)
-            .limit(1)
+        profile_res = (
+            admin.table("profiles")
+            .select("full_name")
+            .eq("id", user_id)
+            .single()
             .execute()
         )
-
-        if farm_res.data:
-            farm_id = farm_res.data[0]["id"]
-        else:
-            new_farm = (
-                admin.table("farms")
-                .insert({
-                    "farmer_id": farmer_id,
-                    "farm_type": farm_type,
-                    "size_category": "medium",
-                })
-                .execute()
-            )
-            farm_id = new_farm.data[0]["id"]
-
-        return {"farmer_id": farmer_id, "farm_id": farm_id}
-    
-    def get_farm_for_user(self, user_id: str) -> dict | None:
+        full_name = profile_res.data.get("full_name") if profile_res.data else None
+        new_farmer = (
+            admin.table("farmers")
+            .insert({"user_id": user_id, "name": full_name or "Farmer"})
+            .execute()
+        )
+        return new_farmer.data[0]["id"]
+        
+    def create_farm(self, user_id: str, name: str, farm_type: str, size_category: str = "medium", location: str = None, description: str = None) -> dict:
         """
-        Returns farm_id for existing user.
-        Returns None if no farmer/farm exists yet.
+        Explicitly create a new farm for this user.
+        Called when user clicks 'Create Farm' button.
+        A user can call this as many times as they want.
         """
         admin = get_admin_supabase_client()
+        farmer_id = self._get_or_create_farmer(admin, user_id)
 
-        farmer_res = (
-            admin.table("farmers")
-            .select("id")
-            .eq("user_id", user_id)
-            .limit(1)
-            .execute()
-        )
-        if not farmer_res.data:
-            return None
-
-        farmer_id = farmer_res.data[0]["id"]
-
-        farm_res = (
+        new_farm = (
             admin.table("farms")
-            .select("id")
-            .eq("farmer_id", farmer_id)
-            .limit(1)
+            .insert({
+                "farmer_id": farmer_id,
+                "name": name,
+                "farm_type": farm_type,
+                "size_category": size_category,
+                "location": location,
+                "description": description,
+            })
             .execute()
         )
-        if not farm_res.data:
-            return None
+        return new_farm.data[0]
 
-        return {"farmer_id": farmer_id, "farm_id": farm_res.data[0]["id"]}
-    
     def get_farms_for_user(self, user_id: str) -> list:
-        """Returns all farms for this user."""
+        """
+        Returns all farms belonging to this user, ordered by creation date.
+        """
         admin = get_admin_supabase_client()
 
         farmer_res = (
@@ -100,10 +73,12 @@ class FarmerService:
             return []
 
         farmer_id = farmer_res.data[0]["id"]
+
         farms = (
             admin.table("farms")
             .select("*")
             .eq("farmer_id", farmer_id)
+            .order("created_at", desc=False)
             .execute()
         )
         return farms.data or []
@@ -131,5 +106,35 @@ class FarmerService:
             .execute()
         )
         return res.data[0] if res.data else None
+
+    def verify_farm_ownership(self, farm_id: str, user_id: str) -> bool:
+        """
+        Security check: confirms this farm belongs to this user.
+        Call this before any write operation on a specific farm.
+        """
+        admin = get_admin_supabase_client()
+
+        farmer_res = (
+            admin.table("farmers")
+            .select("id")
+            .eq("user_id", user_id)
+            .limit(1)
+            .execute()
+        )
+        if not farmer_res.data:
+            return False
+
+        farmer_id = farmer_res.data[0]["id"]
+
+        farm_res = (
+            admin.table("farms")
+            .select("id")
+            .eq("id", farm_id)
+            .eq("farmer_id", farmer_id)
+            .limit(1)
+            .execute()
+        )
+        return bool(farm_res.data)
+
 
 farmer_service = FarmerService()
