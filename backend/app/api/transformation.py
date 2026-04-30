@@ -8,9 +8,16 @@ from app.services.plan_service import plan_service
 transformation_bp = Blueprint("transformation", __name__)
 transformation_service = TransformationService()
 
-@transformation_bp.route("/farms/transform", methods=["POST"])
+@transformation_bp.route("/farms/<farm_id>/transform", methods=["POST"])
 @require_auth
-def transform_farm():
+def transform_farm(farm_id):
+    """
+    Run farm transformation for a specific farm.
+    farm_id comes from the URL - client picks which farm to transform.
+    """
+    if not farmer_service.verify_farm_ownership(farm_id, g.user_id):
+        return jsonify({"error": "Farm not found or access denied"}), 403
+
     farm_data = request.get_json()
     if not farm_data:
         return jsonify({"error": "Missing JSON body"}), 400
@@ -21,34 +28,27 @@ def transform_farm():
     if "farm_type" not in farm_data:
         return jsonify({"error": "Missing 'farm_type' field"}), 400
 
-    # Get or create farmer/farm for this user — replaces hardcoded farm_id
-    ids = farmer_service.get_or_create_for_user(
-        user_id=g.user_id,
-        farm_type=farm_data["farm_type"]
-    )
-    farm_id = ids["farm_id"]
-
     experiences = transformation_service.generate_experiences(farm_data)
     experience_service.save_experiences(farm_id, experiences)
     plan_service.increment_transformation_counter(g.user_id)
-    
+
     return jsonify({
         "farm_id": farm_id,
         "message": "Experiences generated successfully"
     }), 200
     
-# NEW ROUTE: called by Dashboard and Transform on page load
-@transformation_bp.route("/farms/my", methods=["GET"])
+
+@transformation_bp.route("/farms/<farm_id>/experiences", methods=["GET"])
 @require_auth
-def get_my_farm():
-    ids = farmer_service.get_farm_for_user(g.user_id)
+def get_farm_experiences(farm_id):
+    """
+    Get all experiences for a specific farm.
+    """
+    if not farmer_service.verify_farm_ownership(farm_id, g.user_id):
+        return jsonify({"error": "Farm not found or access denied"}), 403
 
-    if not ids:
-        return jsonify({"farm_id": None, "experiences": []}), 200
-
-    experiences = experience_service.list_experiences(ids["farm_id"])
-
+    experiences = experience_service.list_experiences(farm_id)
     return jsonify({
-        "farm_id": ids["farm_id"],
+        "farm_id": farm_id,
         "experiences": experiences
     }), 200
