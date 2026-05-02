@@ -33,7 +33,11 @@ class FarmerService:
         )
         return new_farmer.data[0]["id"]
         
-    def create_farm(self, user_id: str, name: str, farm_type: str, size_category: str = "medium", location: str = None, description: str = None) -> dict:
+    def create_farm(self, user_id: str, name: str, farm_type: str, size_category: str = "medium", 
+                location: str = None, description: str = None,
+                crops: list = None, animals: dict = None, existing_trees: list = None,
+                water_source: str = None, structures: list = None, road_access: str = None,
+                distance_from_city_km: int = None, scenic_features: list = None) -> dict:
         """
         Explicitly create a new farm for this user.
         Called when user clicks 'Create Farm' button.
@@ -51,6 +55,14 @@ class FarmerService:
                 "size_category": size_category,
                 "location": location,
                 "description": description,
+                "crops": crops or [],
+                "animals": animals or {},
+                "existing_trees": existing_trees or [],
+                "water_source": water_source,
+                "structures": structures or [],
+                "road_access": road_access,
+                "distance_from_city_km": distance_from_city_km,
+                "scenic_features": scenic_features or [],
             })
             .execute()
         )

@@ -27,6 +27,14 @@ def create_farm():
     size_category = data.get("size_category", "medium").strip()
     location = data.get("location", "").strip() or None
     description = data.get("description", "").strip() or None
+    crops = data.get("crops", [])
+    animals = data.get("animals", {})
+    existing_trees = data.get("existing_trees", [])
+    water_source = data.get("water_source") or None
+    structures = data.get("structures", [])
+    road_access = data.get("road_access") or None
+    distance_from_city_km = data.get("distance_from_city_km") or None
+    scenic_features = data.get("scenic_features", [])
 
     if not name:
         return jsonify({"error": "Farm name is required"}), 400
@@ -40,6 +48,14 @@ def create_farm():
         size_category=size_category,
         location=location,
         description=description,
+        crops=crops,
+        animals=animals,
+        existing_trees=existing_trees,
+        water_source=water_source,
+        structures=structures,
+        road_access=road_access,
+        distance_from_city_km=distance_from_city_km,
+        scenic_features=scenic_features,
     )
     return jsonify({"farm": farm}), 201
 
