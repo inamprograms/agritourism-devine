@@ -71,3 +71,58 @@ def get_farm(farm_id):
     if not farm:
         return jsonify({"error": "Farm not found"}), 404
     return jsonify({"farm": farm}), 200
+
+
+@farm_bp.route("/farms/<farm_id>", methods=["PATCH"])
+@require_auth
+def update_farm(farm_id):
+    """
+    Update farm details.
+    Only fields provided in body will be updated.
+    """
+    if not farmer_service.verify_farm_ownership(farm_id, g.user_id):
+        return jsonify({"error": "Farm not found or access denied"}), 403
+
+    data = request.get_json() or {}
+
+    allowed_fields = {
+        "name", "farm_type", "size_category", "location", "description",
+        "crops", "animals", "existing_trees", "water_source", "structures",
+        "road_access", "distance_from_city_km", "scenic_features"
+    }
+
+    update_data = {k: v for k, v in data.items() if k in allowed_fields}
+
+    if not update_data:
+        return jsonify({"error": "No valid fields to update"}), 400
+
+    updated_farm = farmer_service.update_farm(farm_id, update_data)
+    if not updated_farm:
+        return jsonify({"error": "Update failed"}), 500
+
+    return jsonify({"farm": updated_farm}), 200
+
+
+@farm_bp.route("/farmer/profile", methods=["PATCH"])
+@require_auth
+def update_farmer_profile():
+    """
+    Update farmer profile details — budget, goals, timeline etc.
+    """
+    data = request.get_json() or {}
+
+    allowed_fields = {
+        "budget_range", "family_helpers", "visitor_experience",
+        "primary_goal", "timeline", "province"
+    }
+
+    update_data = {k: v for k, v in data.items() if k in allowed_fields}
+
+    if not update_data:
+        return jsonify({"error": "No valid fields to update"}), 400
+
+    updated = farmer_service.update_farmer_profile(g.user_id, update_data)
+    if not updated:
+        return jsonify({"error": "Update failed"}), 500
+
+    return jsonify({"farmer": updated}), 200

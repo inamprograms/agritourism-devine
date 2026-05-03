@@ -106,6 +106,17 @@ class FarmerService:
             .execute()
         )
         return res.data if res.data else None
+    
+    def update_farm(self, farm_id: str, data: dict) -> dict | None:
+        """Updates farm details. Only updates fields that are provided."""
+        admin = get_admin_supabase_client()
+        res = (
+            admin.table("farms")
+            .update(data)
+            .eq("id", farm_id)
+            .execute()
+        )
+        return res.data[0] if res.data else None
 
     def get_farmer_for_user(self, user_id: str) -> dict | None:
         """Returns farmer record for this user."""
@@ -115,6 +126,29 @@ class FarmerService:
             .select("*")
             .eq("user_id", user_id)
             .limit(1)
+            .execute()
+        )
+        return res.data[0] if res.data else None
+    
+    def update_farmer_profile(self, user_id: str, data: dict) -> dict | None:
+        """Updates farmer profile fields like budget, goals, timeline etc."""
+        admin = get_admin_supabase_client()
+        
+        farmer_res = (
+            admin.table("farmers")
+            .select("id")
+            .eq("user_id", user_id)
+            .limit(1)
+            .execute()
+        )
+        if not farmer_res.data:
+            return None
+
+        farmer_id = farmer_res.data[0]["id"]
+        res = (
+            admin.table("farmers")
+            .update(data)
+            .eq("id", farmer_id)
             .execute()
         )
         return res.data[0] if res.data else None
