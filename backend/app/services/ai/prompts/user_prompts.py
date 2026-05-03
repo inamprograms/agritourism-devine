@@ -1,57 +1,122 @@
-def farm_advisory_prompt(user_prompt: str, transformation_summary: str) -> str:
+def farm_advisory_prompt(user_prompt: str, transformation_summary: dict) -> str:
+    """
+    Farm-level advisory prompt.
+    Now includes full farm context and farmer goals so AI gives
+    personalized, grounded advice.
+    """
+    
+    farm_ctx = transformation_summary.get("farm_context", {})
+    experiences = transformation_summary.get("experiences_by_level", {})
+    
     return f"""
-Farmer's question or description:
+FARMER'S SITUATION:
+- Farm type: {farm_ctx.get("farm_type", "not specified")}
+- Size: {farm_ctx.get("size_category", "not specified")}
+- Crops grown: {", ".join(farm_ctx.get("crops", [])) or "none listed"}
+- Animals: {farm_ctx.get("animals") or "none listed"}
+- Road access: {farm_ctx.get("road_access", "not specified")}
+- Distance from nearest city: {farm_ctx.get("distance_from_city_km", "unknown")} km
+- Budget available: {farm_ctx.get("budget_range", "low")}
+- Family members who can help: {farm_ctx.get("family_helpers", 0)}
+- Prior visitor experience: {farm_ctx.get("visitor_experience", "none")}
+- Primary goal: {farm_ctx.get("primary_goal", "income")}
+- Timeline to start: {farm_ctx.get("timeline", "months")}
+
+FARMER'S QUESTION OR DESCRIPTION:
 {user_prompt}
 
-Current agritourism transformation plan (rule-based — DO NOT modify this data):
-{transformation_summary}
+CURRENT PERSONALIZED AGRITOURISM TRANSFORMATION PLAN (generated for this farm — DO NOT modify):
+{experiences}
 
-Your tasks:
-1. Directly answer the farmer's question
-2. Identify the single best first step (lowest risk, lowest effort)
-3. Suggest 2-3 small practical improvements
-4. Note future possibilities clearly marked as [FUTURE IDEA]
+YOUR TASKS:
+1. Directly answer the farmer's question based on THEIR specific situation
+2. Identify the single best first step for THIS farmer (lowest risk, lowest effort, consider their budget and timeline)
+3. Suggest 2-3 small practical improvements relevant to their farm assets
+4. Note future possibilities marked as [FUTURE IDEA]
+
+IMPORTANT: Your advice must reflect this farmer's actual budget ({farm_ctx.get("budget_range", "low")}),
+their timeline ({farm_ctx.get("timeline", "months")}), and their visitor experience level 
+({farm_ctx.get("visitor_experience", "none")}). Do not suggest expensive setups if budget is low.
 
 Return ONLY valid JSON with these exact keys:
 {{
-  "answer": "direct, clear answer to the farmer's question in 2-3 sentences",
-  "first_step": "the single best thing to start with and exactly why",
+  "answer": "direct, personalized answer to the farmer's question in 2-3 sentences",
+  "first_step": "the single best thing to start with given their specific situation and why",
   "improvements": ["improvement 1", "improvement 2", "improvement 3"],
   "future_ideas": ["future idea 1", "future idea 2"]
 }}
 """
 
-
-def experience_advisory_prompt(user_prompt: str, experience_details: dict) -> str:
+def experience_advisory_prompt(user_prompt: str, experience_details: dict, farm_context: dict = None) -> str:
+    """
+    Single experience advisory prompt.
+    Now includes farm context so AI can give advice that fits this farmer's reality.
+    """
+    ctx = farm_context or {}
+    
     return f"""
-Farmer's question or description:
+FARMER'S SITUATION:
+- Budget: {ctx.get("budget_range", "low")}
+- Family helpers available: {ctx.get("family_helpers", 0)}
+- Prior visitor experience: {ctx.get("visitor_experience", "none")}
+- Farm type: {ctx.get("farm_type", "not specified")}
+- Location: {ctx.get("province", "rural area")}
+
+FARMER'S QUESTION:
 {user_prompt}
 
-Selected experience details (DO NOT modify this data):
-{experience_details}
+SELECTED EXPERIENCE DETAILS (DO NOT modify this data):
+- Title: {experience_details.get("title")}
+- Type: {experience_details.get("type")}
+- Level: {experience_details.get("level")}
+- Monetization: {experience_details.get("monetization")}
+- Description: {experience_details.get("description", "not available")}
+- Setup cost: {experience_details.get("setup_cost_range", "unknown")}
+- Time to launch: {experience_details.get("time_to_launch", "unknown")}
+- Estimated revenue: {experience_details.get("estimated_revenue_pkr", "unknown")}
+- Season: {experience_details.get("season", "year_round")}
 
-Your tasks:
+YOUR TASKS:
 1. Directly answer the farmer's question about this experience
-2. Explain what this experience involves in simple terms
-3. Give a step-by-step guide to running it
-4. Suggest small improvements
+2. Explain what this experience involves in simple, plain language
+3. Give a step-by-step guide to running it — practical and realistic
+4. Suggest small improvements that fit their budget ({ctx.get("budget_range", "low")})
 5. Note future possibilities marked as [FUTURE IDEA]
 
 Return ONLY valid JSON with these exact keys:
 {{
   "answer": "direct answer to the farmer's question in 2-3 sentences",
-  "what_it_is": "simple explanation of this experience",
+  "what_it_is": "simple explanation of this experience in 2-3 sentences",
   "how_to_run": ["step 1", "step 2", "step 3", "step 4"],
-  "improvements": ["improvement 1", "improvement 2"],
+  "improvements": ["improvement 1 (budget-appropriate)", "improvement 2"],
   "future_ideas": ["future idea 1", "future idea 2"]
 }}
 """
 
-
-def story_generation_prompt(experience_details: dict) -> str:
+def story_generation_prompt(experience_details: dict, farm_context: dict = None) -> str:
+    """
+    Visitor-facing story generation prompt.
+    Now includes farm location/type for culturally grounded storytelling.
+    """
+    ctx = farm_context or {}
+    
     return f"""
-Experience details:
-{experience_details}
+FARM CONTEXT:
+- Farm type: {ctx.get("farm_type", "mixed farm")}
+- Location: {ctx.get("province", "rural area")}
+- Crops: {", ".join(ctx.get("crops", [])) or "various crops"}
+- Animals: {ctx.get("animals") or "farm animals"}
+
+EXPERIENCE DETAILS:
+- Title: {experience_details.get("title")}
+- Type: {experience_details.get("type")}
+- Description: {experience_details.get("description", "")}
+- Season: {experience_details.get("season", "year_round")}
+- Level: {experience_details.get("level")}
+
+Write an engaging, visitor-friendly story about this farm experience that makes 
+urban visitors excited to visit. Capture the authentic beauty of rural farm 
+life — the sights, smells, sounds, and warmth of the people.
 
 Write an engaging, visitor-friendly story about this farm experience.
 
