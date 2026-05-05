@@ -488,6 +488,51 @@ def me():
 
 
 # =============================================================================
+# GET /auth/profile
+# =============================================================================
+@auth_bp.route("/profile", methods=["GET"])
+@require_auth
+def get_profile():
+    """Get full profile for the authenticated user."""
+    try:
+        supabase = g.supabase
+        profile_response = supabase.table("profiles").select("*").eq(
+            "id", g.user_id
+        ).single().execute()
+        profile = profile_response.data if profile_response.data else {}
+        return jsonify({"profile": profile}), 200
+    except Exception as e:
+        logger.error("/profile GET error", exc_info=True)
+        return jsonify({"error": "Failed to fetch profile"}), 500
+
+
+# =============================================================================
+# PATCH /auth/profile
+# =============================================================================
+@auth_bp.route("/profile", methods=["PATCH"])
+@require_auth
+def update_profile():
+    """Update base profile fields for any role."""
+    data = request.get_json() or {}
+
+    allowed_fields = {"full_name", "bio", "phone", "avatar_url"}
+    update_data = {k: v for k, v in data.items() if k in allowed_fields}
+
+    if not update_data:
+        return jsonify({"error": "No valid fields to update"}), 400
+
+    try:
+        admin = get_admin_supabase_client()
+        res = admin.table("profiles").update(update_data).eq(
+            "id", g.user_id
+        ).execute()
+        return jsonify({"profile": res.data[0] if res.data else {}}), 200
+    except Exception as e:
+        logger.error("/profile PATCH error", exc_info=True)
+        return jsonify({"error": "Failed to update profile"}), 500
+    
+
+# =============================================================================
 # POST /auth/refresh
 # =============================================================================
 @auth_bp.route("/refresh", methods=["POST"])
