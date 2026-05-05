@@ -102,27 +102,3 @@ def update_farm(farm_id):
 
     return jsonify({"farm": updated_farm}), 200
 
-
-@farm_bp.route("/farmer/profile", methods=["PATCH"])
-@require_auth
-def update_farmer_profile():
-    """
-    Update farmer profile details — budget, goals, timeline etc.
-    """
-    data = request.get_json() or {}
-
-    allowed_fields = {
-        "budget_range", "family_helpers", "visitor_experience",
-        "primary_goal", "timeline", "province"
-    }
-
-    update_data = {k: v for k, v in data.items() if k in allowed_fields}
-
-    if not update_data:
-        return jsonify({"error": "No valid fields to update"}), 400
-
-    updated = farmer_service.update_farmer_profile(g.user_id, update_data)
-    if not updated:
-        return jsonify({"error": "Update failed"}), 500
-
-    return jsonify({"farmer": updated}), 200
