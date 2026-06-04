@@ -5,6 +5,9 @@ from docx import Document
 from pypdf import PdfReader
 from bs4 import BeautifulSoup
 import requests
+import nltk
+
+nltk.download("punkt_tab", quiet=True)
 
 def load_document(file_path: str) -> str:
     ext = os.path.splitext(file_path)[1].lower()
@@ -31,14 +34,60 @@ def load_from_url(url: str) -> str:
     lines = [line.strip() for line in text.splitlines() if line.strip()]
     return "\n".join(lines)
 
-def chunk_text(text: str, chunk_size=500, overlap=100) -> list[str]:
-    chunks = []   
-    step = chunk_size - overlap
-    for i in range(0, len(text), step):
-        chunk = text[i:i + chunk_size]
-        if len(chunk) < 50:
-            break
-        chunks.append(chunk)
+# def chunk_text(text: str, chunk_size=500, overlap=100) -> list[str]:
+#     chunks = []   
+#     step = chunk_size - overlap
+#     for i in range(0, len(text), step):
+#         chunk = text[i:i + chunk_size]
+#         if len(chunk) < 50:
+#             break
+#         chunks.append(chunk)
+#     return chunks
+def chunk_text(text: str, chunk_size: int = 500, overlap: int = 1) -> list[str]:
+    """
+    Sentence aware chunking.
+    
+    Splits text into sentences first, then groups sentences into chunks
+    until chunk_size (in characters) is reached. Overlap is in sentences,
+    not characters, so chunks always start and end on complete thoughts.
+    
+    Args:
+        text: Raw document text
+        chunk_size: Max characters per chunk
+        overlap: Number of sentences to carry over into the next chunk
+        
+    Returns:
+        List of clean, complete sentence chunks
+    """
+    sentences = nltk.sent_tokenize(text)
+    sentences = [s.strip() for s in sentences if s.strip()]
+
+    chunks = []
+    current_sentences = []
+    current_length = 0
+
+    for sentence in sentences:
+        sentence_length = len(sentence)
+
+        # If adding this sentence exceeds chunk_size AND we already have content,
+        # save current chunk and start a new one with overlap
+        if current_length + sentence_length > chunk_size and current_sentences:
+            chunk = " ".join(current_sentences)
+            if len(chunk) >= 50:
+                chunks.append(chunk)
+            # Carry last `overlap` sentences into next chunk
+            current_sentences = current_sentences[-overlap:] if overlap else []
+            current_length = sum(len(s) for s in current_sentences)
+
+        current_sentences.append(sentence)
+        current_length += sentence_length
+
+    # The last remaining chunk
+    if current_sentences:
+        chunk = " ".join(current_sentences)
+        if len(chunk) >= 50:
+            chunks.append(chunk)
+
     return chunks
 
 def ingest(file_path: str, category: str, target_audience: str, provider):
