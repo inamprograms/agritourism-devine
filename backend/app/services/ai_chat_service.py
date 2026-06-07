@@ -61,11 +61,11 @@ class AIChatService:
             ValueError: If the model returns an empty response.
             Exception: If guardrails or AI provider fail.
         """
-        # 1. Guardrails check — before anything reaches the model
+        # 1. Guardrails check, before anything reaches the model
         self.guardrails.validate(message)
         
         # 2. Build structured messages list
-        messages, rag_hit, retrieved_context = self._build_messages(history, message, language)
+        messages, rag_hit, retrieved_context, similarities = self._build_messages(history, message, language)
         
         # 3. Call model and measure latency
         start = time.time()
@@ -93,6 +93,7 @@ class AIChatService:
             rag_hit=rag_hit,
             response_length=len(result.split()),
             retrieved_context=retrieved_context,
+            retrieval_scores=similarities,
             user_id=user_id,
             ai_type=ai_type,
         )
@@ -121,7 +122,8 @@ class AIChatService:
         # RAG retrieval point 
         retrieved_context = self.retriever.retrieve(new_message)
         rag_hit = bool(retrieved_context)
-        context = "\n\n".join(retrieved_context) if retrieved_context else None
+        context = "\n\n".join([r["content"] for r in retrieved_context]) if retrieved_context else None
+        similarities = [r["similarity"] for r in retrieved_context] if retrieved_context else []
         
         # RAG injection point 
         if retrieved_context:
@@ -143,6 +145,6 @@ class AIChatService:
             "content": new_message
         })
 
-        return messages, rag_hit, context if rag_hit else None
+        return messages, rag_hit, context if rag_hit else None, similarities
     
 chat_service = AIChatService()

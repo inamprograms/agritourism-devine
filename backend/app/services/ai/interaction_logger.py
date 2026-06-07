@@ -22,6 +22,7 @@ class InteractionLogger:
         retrieved_context: str = None,
         user_id: str = None,
         ai_type: str = "assistant",
+        retrieval_scores: list[float] = None,
     ) -> str | None:
         try:
             response = supabase.table("ai_interaction_logs").insert({
@@ -34,6 +35,7 @@ class InteractionLogger:
                 "rag_hit": rag_hit,
                 "response_length": response_length,
                 "retrieved_context": retrieved_context,
+                "retrieval_scores": retrieval_scores or [],
                 "user_id": user_id,
             }).execute()
             

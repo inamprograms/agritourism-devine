@@ -2,10 +2,12 @@ from app.core.supabase import supabase
 from app.services.ai.embeddings.factory import get_embedding_provider
 
 class ContextRetriever:
+    SIMILARITY_THRESHOLD = 0.5
+    
     def __init__(self):
         self.provider = get_embedding_provider()
     
-    def retrieve(self, query: str, top_k: int = 3) -> list[str]:
+    def retrieve(self, query: str, top_k: int = 3) -> list[dict]:
         query_embedding = self.provider.embed(query)
         if not query_embedding:
             return []
@@ -17,8 +19,16 @@ class ContextRetriever:
         
         if not result.data:
             return []
-        
-        return [row["content"] for row in result.data]
+
+        filtered = [
+            row for row in result.data
+            if row.get("similarity", 1.0) >= self.SIMILARITY_THRESHOLD
+        ]
+
+        return [
+            {"content": row["content"], "similarity": round(row.get("similarity", 0.0), 4)}
+            for row in filtered
+        ]
 
 # RUN: python -m services.ai.retriever 
 # if __name__ == "__main__":
