@@ -2,7 +2,7 @@ from flask import Blueprint, request, g
 from app.services.transform_ai_service import transform_advisor_service, story_service
 from app.services.transformation_service import TransformationService
 from app.services.experience_service import experience_service
-from app.services.ai_chat_service import chat_service
+from app.services.ai_chat_service import chat_service, ChatRequest
 from app.services.farmer_service import farmer_service
 from app.services.plan_service import plan_service
 from app.auth.decorators import require_auth
@@ -25,14 +25,14 @@ def ai_chat():
     session_id = data.get("session_id", "anonymous")
     
     try:
-        response = chat_service.chat(
+        response = chat_service.chat(ChatRequest(
             message=user_message,
             history=history,
             language=language,
             session_id=session_id,
             user_id=g.user_id,
             ai_type="assistant",
-        )
+        ))
         return {
             "response": response
         }
