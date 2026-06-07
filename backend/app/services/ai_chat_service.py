@@ -96,7 +96,7 @@ class AIChatService:
         log_id = self.logger.log(
             session_id=request.session_id,
             user_message=request.message,
-            ai_response=request.result,
+            ai_response=result,
             language=request.language,
             latency_ms=latency_ms,
             source=request.source,
