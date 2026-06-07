@@ -226,3 +226,6 @@ Your rules:
 Your tone: Warm, evocative, inviting. Like a travel writer who loves 
 authentic rural experiences and wants others to discover them.
 """
+
+def evaluation_judge_system_prompt() -> str:
+    return "You are an evaluation judge. Return only valid JSON."
