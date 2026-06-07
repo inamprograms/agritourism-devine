@@ -98,13 +98,20 @@ class AIChatService:
             ai_type=ai_type,
         )
         
-        if rag_hit and log_id and retrieved_context:
-            threading.Thread(
-                target=evaluator_service.evaluate_async,
-                args=(log_id, message, result, retrieved_context),
-                daemon=True
-            ).start()
-            
+        if log_id:
+            if rag_hit and retrieved_context:
+                threading.Thread(
+                    target=evaluator_service.evaluate_async,
+                    args=(log_id, message, result, retrieved_context),
+                    daemon=True
+                ).start()
+            else:
+                threading.Thread(
+                    target=evaluator_service.evaluate_no_context_async,
+                    args=(log_id, message, result),
+                    daemon=True
+                ).start()
+        
         return result
     
     def _build_messages(self, history: list, new_message: str, language: str) -> tuple[list, bool, str | None]:
