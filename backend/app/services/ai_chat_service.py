@@ -7,8 +7,18 @@ from backend.app.services.ai.interaction_loger import InteractionLogger
 from app.services.ai.retriever import ContextRetriever
 from app.services.ai.evaluator import evaluator_service
 from config import Config
+from dataclasses import dataclass, field
 
-
+@dataclass
+class ChatRequest:
+    message: str
+    history: list = field(default_factory=list)
+    language: str = "en"
+    session_id: str = "anonymous"
+    source: str = "web"
+    user_id: str = None
+    ai_type: str = "assistant"
+    
 class AIChatService:
     """
     AI Assistant Service.
@@ -31,7 +41,7 @@ class AIChatService:
         self.logger = InteractionLogger()
         self.retriever = ContextRetriever()
     
-    def chat(self, message: str, history: list, language: str = "en", session_id: str = "anonymous", source: str = "web", user_id: str = None, ai_type: str = "assistant") -> str:
+    def chat(self, request: ChatRequest) -> str:
         """
         Process a user message through the AI assistant with RAG context and multi-turn history.
 
@@ -62,10 +72,10 @@ class AIChatService:
             Exception: If guardrails or AI provider fail.
         """
         # 1. Guardrails check, before anything reaches the model
-        self.guardrails.validate(message)
+        self.guardrails.validate(request.message)
         
         # 2. Build structured messages list
-        messages, rag_hit, retrieved_context, similarities = self._build_messages(history, message, language)
+        messages, rag_hit, retrieved_context, similarities = self._build_messages(request.history, request.message, request.language)
         
         # 3. Call model and measure latency
         start = time.time()
@@ -84,31 +94,31 @@ class AIChatService:
         
         # 5. Log interaction
         log_id = self.logger.log(
-            session_id=session_id,
-            user_message=message,
-            ai_response=result,
-            language=language,
+            session_id=request.session_id,
+            user_message=request.message,
+            ai_response=request.result,
+            language=request.language,
             latency_ms=latency_ms,
-            source=source,
+            source=request.source,
             rag_hit=rag_hit,
             response_length=len(result.split()),
             retrieved_context=retrieved_context,
             retrieval_scores=similarities,
-            user_id=user_id,
-            ai_type=ai_type,
+            user_id=request.user_id,
+            ai_type=request.ai_type,
         )
         
         if log_id:
             if rag_hit and retrieved_context:
                 threading.Thread(
                     target=evaluator_service.evaluate_async,
-                    args=(log_id, message, result, retrieved_context),
+                    args=(log_id, request.message, result, retrieved_context),
                     daemon=True
                 ).start()
             else:
                 threading.Thread(
                     target=evaluator_service.evaluate_no_context_async,
-                    args=(log_id, message, result),
+                    args=(log_id, request.message, result),
                     daemon=True
                 ).start()
         
