@@ -3,7 +3,7 @@ import threading
 from app.services.ai.factory import get_ai_provider
 from app.services.ai.prompts.system_prompts import ai_assistant_system_prompt
 from app.services.ai.guardrails import GuardrailsService
-from app.services.ai.interaction_logger import InteractionLogger
+from backend.app.services.ai.interaction_loger import InteractionLogger
 from app.services.ai.retriever import ContextRetriever
 from app.services.ai.evaluator import evaluator_service
 from config import Config
