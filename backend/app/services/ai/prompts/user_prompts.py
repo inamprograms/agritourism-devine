@@ -194,3 +194,29 @@ Return ONLY valid JSON, no extra text:
   "completeness": {{"score": 0.0, "reason": "one sentence"}},
   "safety": {{"score": 0.0, "reason": "one sentence"}}
 }}"""
+
+
+def guardrail_check_prompt(message: str) -> str:
+    return f"""You are a safety classifier for an agritourism platform AI assistant.
+
+Analyze this user message and classify it.
+
+MESSAGE: {message}
+
+Check for:
+1. is_safe: Is the message free from harmful, abusive, or malicious intent?
+   (true = safe, false = unsafe)
+
+2. is_on_topic: Is the message related to agritourism, farming, carbon credits,
+   or the platform? General greetings are also acceptable.
+   (true = on topic, false = off topic)
+
+3. reason: One sentence explaining your decision if either check fails.
+   If both pass, reason can be "Message is safe and on topic."
+
+Return ONLY valid JSON, no extra text:
+{{
+  "is_safe": true,
+  "is_on_topic": true,
+  "reason": "one sentence"
+}}"""

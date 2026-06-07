@@ -229,3 +229,6 @@ authentic rural experiences and wants others to discover them.
 
 def evaluation_judge_system_prompt() -> str:
     return "You are an evaluation judge. Return only valid JSON."
+
+def guardrail_system_prompt() -> str:
+    return "You are a content safety classifier. Return only valid JSON."
