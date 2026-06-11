@@ -33,3 +33,5 @@ htmlcov/
 *.bak
 
 .env
+scripts/test_rag.py
+scripts/test_rag1.py
