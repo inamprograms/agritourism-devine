@@ -1,8 +1,10 @@
 import json
-from app.services.ai.factory import get_ai_provider
+# from app.services.ai.factory import get_ai_provider
+from groq import Groq
 from app.services.ai.prompts.system_prompts import evaluation_judge_system_prompt
 from app.services.ai.prompts.user_prompts import evaluation_judge_prompt, evaluation_judge_prompt_no_context
 from app.core.supabase import supabase
+from config import Config
 
 class EvaluatorService:
     """
@@ -14,7 +16,9 @@ class EvaluatorService:
     """
 
     def __init__(self):
-        self.provider = get_ai_provider()
+        # self.provider = get_ai_provider()
+        self.judge_client = Groq(api_key=Config.GROQ_API_KEY)
+        self.judge_model = Config.GROQ_JUDGE_MODEL
 
     def _judge(self, question: str, context: str, response: str) -> dict | None:
         """
@@ -22,12 +26,16 @@ class EvaluatorService:
         Returns parsed dict or None if anything fails.
         """
         try:
-            raw = self.provider.complete(
-                system_prompt=evaluation_judge_system_prompt(),
-                user_prompt=evaluation_judge_prompt(question, context, response),
+            completion = self.judge_client.chat.completions.create(
+                model=self.judge_model,
+                messages=[
+                    {"role": "system", "content": evaluation_judge_system_prompt()},
+                    {"role": "user",   "content": evaluation_judge_prompt(question, context, response)},
+                ],
                 temperature=0.0,
-                max_tokens=500,
+                max_tokens=600,
             )
+            raw = completion.choices[0].message.content.strip()
             return json.loads(raw)
         except json.JSONDecodeError as e:
             print(f"[EVAL_ERROR] Failed to parse judge response: {e}")
@@ -43,12 +51,16 @@ class EvaluatorService:
         Returns parsed dict or None if anything fails.
         """
         try:
-            raw = self.provider.complete(
-                system_prompt=evaluation_judge_system_prompt(),
-                user_prompt=evaluation_judge_prompt_no_context(question, response),
+            completion = self.judge_client.chat.completions.create(
+                model=self.judge_model,
+                messages=[
+                    {"role": "system", "content": evaluation_judge_system_prompt()},
+                    {"role": "user",   "content": evaluation_judge_prompt_no_context(question, response)},
+                ],
                 temperature=0.0,
-                max_tokens=300,
+                max_tokens=400,
             )
+            raw = completion.choices[0].message.content.strip()
             return json.loads(raw)
         except json.JSONDecodeError as e:
             print(f"[EVAL_ERROR] Failed to parse no-context judge response: {e}")
