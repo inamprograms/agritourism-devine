@@ -4,6 +4,7 @@ from app.services.experience_service import experience_service
 from app.services.farmer_service import farmer_service
 from app.auth.decorators import require_auth
 from app.services.plan_service import plan_service
+from app.services.farm_normalizer import normalize_farm
 
 transformation_bp = Blueprint("transformation", __name__)
 transformation_service = TransformationService()
@@ -25,12 +26,19 @@ def transform_farm(farm_id):
 
     farmer_profile = farmer_service.get_farmer_for_user(g.user_id) or {}
 
-    farm_data["budget_range"] = farmer_profile.get("budget_range", "low")
-    farm_data["family_helpers"] = farmer_profile.get("family_helpers", 0)
-    farm_data["visitor_experience"] = farmer_profile.get("visitor_experience", "none")
-    farm_data["primary_goal"] = farmer_profile.get("primary_goal", "income")
-    farm_data["timeline"] = farmer_profile.get("timeline", "months")
+    # None means "not answered". We no longer invent defaults like "low" or 0.
+    farm_data["budget_range"] = farmer_profile.get("budget_range")
+    farm_data["family_helpers"] = farmer_profile.get("family_helpers")
+    farm_data["visitor_experience"] = farmer_profile.get("visitor_experience")
+    farm_data["primary_goal"] = farmer_profile.get("primary_goal")
+    farm_data["timeline"] = farmer_profile.get("timeline")
     farm_data["province"] = farmer_profile.get("province")
+    farm_data["country"] = farmer_profile.get("country")
+
+    # Clean messy input (plurals, typos, "5 buffaloes") before the engine sees it
+    farm_data, unrecognized = normalize_farm(farm_data)
+    if unrecognized:
+        current_app.logger.warning("Unrecognized farm input (farm %s): %s", farm_id, unrecognized)
 
     experiences = transformation_service.generate_experiences(farm_data)
 

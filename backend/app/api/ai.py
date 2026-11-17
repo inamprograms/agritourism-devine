@@ -6,8 +6,12 @@ from app.services.ai_chat_service import chat_service, ChatRequest
 from app.services.farmer_service import farmer_service
 from app.services.plan_service import plan_service
 from app.auth.decorators import require_auth
+from app.services.farm_normalizer import normalize_farm
 
 ai_bp = Blueprint("ai", __name__)
+
+def _or_not_provided(value):
+    return "not provided" if value is None or value == "" else value
 
 @ai_bp.route("/ai/chat", methods=["POST"])
 @require_auth
@@ -59,13 +63,15 @@ def ai_interaction(farm_id):
 
     farm_data = {
         **farm_record,
-        "budget_range": farmer_profile.get("budget_range", "low"),
-        "family_helpers": farmer_profile.get("family_helpers", 0),
-        "visitor_experience": farmer_profile.get("visitor_experience", "none"),
-        "primary_goal": farmer_profile.get("primary_goal", "income"),
-        "timeline": farmer_profile.get("timeline", "months"),
+        "budget_range": farmer_profile.get("budget_range"),
+        "family_helpers": farmer_profile.get("family_helpers"),
+        "visitor_experience": farmer_profile.get("visitor_experience"),
+        "primary_goal": farmer_profile.get("primary_goal"),
+        "timeline": farmer_profile.get("timeline"),
         "province": farmer_profile.get("province"),
+        "country": farmer_profile.get("country"),
     }
+    farm_data, _ = normalize_farm(farm_data)
 
     transformation_service = TransformationService()
     experiences = experience_service.list_experiences(farm_id)
@@ -105,15 +111,17 @@ def ai_explain_experience(farm_id, experience_id):
 
     farm_record = farmer_service.get_farm_by_id(farm_id) or {}
     farmer_profile = farmer_service.get_farmer_for_user(g.user_id) or {}
+    
+    farm_record, _ = normalize_farm(farm_record)
 
     farm_context = {
         "farm_type": farm_record.get("farm_type"),
         "crops": farm_record.get("crops", []),
         "animals": farm_record.get("animals", {}),
-        "province": farmer_profile.get("province"),
-        "budget_range": farmer_profile.get("budget_range", "low"),
-        "family_helpers": farmer_profile.get("family_helpers", 0),
-        "visitor_experience": farmer_profile.get("visitor_experience", "none"),
+        "province": farmer_profile.get("province") or "rural area",
+        "budget_range": _or_not_provided(farmer_profile.get("budget_range")),
+        "family_helpers": _or_not_provided(farmer_profile.get("family_helpers")),
+        "visitor_experience": _or_not_provided(farmer_profile.get("visitor_experience")),
     }
 
     experience_details = {
@@ -162,11 +170,13 @@ def generate_experience_story(farm_id, experience_id):
     farm_record = farmer_service.get_farm_by_id(farm_id) or {}
     farmer_profile = farmer_service.get_farmer_for_user(g.user_id) or {}
 
+    farm_record, _ = normalize_farm(farm_record)
+    
     farm_context = {
         "farm_type": farm_record.get("farm_type"),
         "crops": farm_record.get("crops", []),
         "animals": farm_record.get("animals", {}),
-        "province": farmer_profile.get("province"),
+        "province": farmer_profile.get("province") or "rural area",
     }
 
     experience_details = {
