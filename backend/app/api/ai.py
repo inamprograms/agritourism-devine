@@ -47,17 +47,16 @@ def ai_interaction(farm_id):
     Farm-level transformation advisory.
     Fetches full farm + farmer context before calling AI.
     """
+    if not farmer_service.verify_farm_ownership(farm_id, g.user_id):
+        return {"error": "Farm not found or access denied"}, 403
+
     data = request.json or {}
     user_prompt = data.get("user_prompt", "")
     language = data.get("language", "en")
-    
-    # Fetch full farm record from DB for real context
+
     farm_record = farmer_service.get_farm_by_id(farm_id) or {}
-    
-    # Fetch farmer profile for goals/readiness context
     farmer_profile = farmer_service.get_farmer_for_user(g.user_id) or {}
-    
-    # Build enriched farm_data combining both
+
     farm_data = {
         **farm_record,
         "budget_range": farmer_profile.get("budget_range", "low"),
@@ -67,11 +66,10 @@ def ai_interaction(farm_id):
         "timeline": farmer_profile.get("timeline", "months"),
         "province": farmer_profile.get("province"),
     }
-    
+
     transformation_service = TransformationService()
     experiences = experience_service.list_experiences(farm_id)
-    
-    # Pass full context to get_ai_summary
+
     ai_summary = transformation_service.get_ai_summary(experiences, farm_data)
 
     ai_response = transform_advisor_service.advise(
@@ -86,26 +84,28 @@ def ai_interaction(farm_id):
         "ai": ai_response
     }
 
+
 @ai_bp.route("/farms/<farm_id>/experiences/<experience_id>/ai", methods=["POST"])
 @require_auth
 def ai_explain_experience(farm_id, experience_id):
     """
     Single experience advisory.
-    Now passes farm context alongside experience details.
+    Passes farm context alongside experience details.
     """
+    if not farmer_service.verify_farm_ownership(farm_id, g.user_id):
+        return {"error": "Farm not found or access denied"}, 403
 
     data = request.get_json() or {}
     language = data.get("language", "en")
     user_prompt = data.get("user_prompt", "")
-    
+
     experience = experience_service.get_experience_by_id(experience_id)
-    if not experience:
+    if not experience or experience["farm_id"] != farm_id:
         return {"error": "Experience not found"}, 404
-    
-    # Fetch farm + farmer context for personalized advice
+
     farm_record = farmer_service.get_farm_by_id(farm_id) or {}
     farmer_profile = farmer_service.get_farmer_for_user(g.user_id) or {}
-    
+
     farm_context = {
         "farm_type": farm_record.get("farm_type"),
         "crops": farm_record.get("crops", []),
@@ -125,10 +125,10 @@ def ai_explain_experience(farm_id, experience_id):
         "description": experience.get("description"),
         "setup_cost_range": experience.get("setup_cost_range"),
         "time_to_launch": experience.get("time_to_launch"),
-        "estimated_revenue_pkr": experience.get("estimated_revenue_pkr"),
+        "estimated_revenue": experience.get("estimated_revenue"),
         "season": experience.get("season"),
     }
-    
+
     ai_response = transform_advisor_service.advise_experience(
         user_prompt=user_prompt,
         experience_details=experience_details,
@@ -136,37 +136,39 @@ def ai_explain_experience(farm_id, experience_id):
         language=language
     )
     plan_service.increment_ai_counter(g.user_id, "experience")
-    
+
     return {
         "experience_id": experience_id,
         "ai": ai_response
     }
-    
+
+
 @ai_bp.route("/farms/<farm_id>/experiences/<experience_id>/story", methods=["POST"])
 @require_auth
 def generate_experience_story(farm_id, experience_id):
     """
     Visitor-facing story generation for a single experience.
-    Now includes farm context for culturally authentic storytelling.
     """
+    if not farmer_service.verify_farm_ownership(farm_id, g.user_id):
+        return {"error": "Farm not found or access denied"}, 403
+
     data = request.get_json() or {}
     language = data.get("language", "en")
 
     experience = experience_service.get_experience_by_id(experience_id)
-    if not experience:
+    if not experience or experience["farm_id"] != farm_id:
         return {"error": "Experience not found"}, 404
-    
-    # Fetch farm context for richer story
+
     farm_record = farmer_service.get_farm_by_id(farm_id) or {}
     farmer_profile = farmer_service.get_farmer_for_user(g.user_id) or {}
-    
+
     farm_context = {
         "farm_type": farm_record.get("farm_type"),
         "crops": farm_record.get("crops", []),
         "animals": farm_record.get("animals", {}),
         "province": farmer_profile.get("province"),
     }
-    
+
     experience_details = {
         "title": experience["title"],
         "type": experience["type"],
@@ -183,7 +185,7 @@ def generate_experience_story(farm_id, experience_id):
         language=language
     )
     plan_service.increment_ai_counter(g.user_id, "story")
-    
+
     return {
         "experience_id": experience_id,
         "ai": ai_response

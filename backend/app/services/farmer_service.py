@@ -96,16 +96,9 @@ class FarmerService:
         return farms.data or []
 
     def get_farm_by_id(self, farm_id: str) -> dict | None:
-        """Returns a single farm by id."""
         admin = get_admin_supabase_client()
-        res = (
-            admin.table("farms")
-            .select("*")
-            .eq("id", farm_id)
-            .single()
-            .execute()
-        )
-        return res.data if res.data else None
+        res = admin.table("farms").select("*").eq("id", farm_id).limit(1).execute()
+        return res.data[0] if res.data else None
     
     def update_farm(self, farm_id: str, data: dict) -> dict | None:
         """Updates farm details. Only updates fields that are provided."""

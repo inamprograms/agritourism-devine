@@ -73,7 +73,7 @@ SELECTED EXPERIENCE DETAILS (DO NOT modify this data):
 - Description: {experience_details.get("description", "not available")}
 - Setup cost: {experience_details.get("setup_cost_range", "unknown")}
 - Time to launch: {experience_details.get("time_to_launch", "unknown")}
-- Estimated revenue: {experience_details.get("estimated_revenue_pkr", "unknown")}
+- Estimated revenue: {experience_details.get("estimated_revenue", "unknown")}
 - Season: {experience_details.get("season", "year_round")}
 
 YOUR TASKS:
