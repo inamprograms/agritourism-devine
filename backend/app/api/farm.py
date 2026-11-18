@@ -5,6 +5,19 @@ from app.services.farmer_service import farmer_service
 farm_bp = Blueprint("farm", __name__)
 
 
+def _clean_distance(value):
+    """Returns (km_or_None, error). Keeps 0 (a farm right at the city edge) as 0."""
+    if value is None or value == "":
+        return None, None
+    try:
+        km = int(value)
+    except (TypeError, ValueError):
+        return None, "distance_from_city_km must be a whole number"
+    if km < 0 or km > 5000:
+        return None, "distance_from_city_km is out of range"
+    return km, None
+
+
 @farm_bp.route("/farms", methods=["GET"])
 @require_auth
 def list_farms():
@@ -18,28 +31,29 @@ def list_farms():
 def create_farm():
     """
     Explicitly create a new farm.
-    Body: { name, farm_type, size_category (optional), location (optional), description (optional) }
+    Only the name is required. farm_type defaults to "Mixed".
     """
     data = request.get_json() or {}
 
-    name = data.get("name", "").strip()
-    farm_type = data.get("farm_type", "").strip()
-    size_category = data.get("size_category", "medium").strip()
-    location = data.get("location", "").strip() or None
-    description = data.get("description", "").strip() or None
-    crops = data.get("crops", [])
-    animals = data.get("animals", {})
-    existing_trees = data.get("existing_trees", [])
+    name = (data.get("name") or "").strip()
+    farm_type = (data.get("farm_type") or "").strip() or "Mixed"
+    size_category = (data.get("size_category") or "medium").strip()
+    location = (data.get("location") or "").strip() or None
+    description = (data.get("description") or "").strip() or None
+    crops = data.get("crops") or []
+    animals = data.get("animals") or {}
+    existing_trees = data.get("existing_trees") or []
     water_source = data.get("water_source") or None
-    structures = data.get("structures", [])
+    structures = data.get("structures") or []
     road_access = data.get("road_access") or None
-    distance_from_city_km = data.get("distance_from_city_km") or None
-    scenic_features = data.get("scenic_features", [])
+    scenic_features = data.get("scenic_features") or []
+
+    distance_from_city_km, distance_error = _clean_distance(data.get("distance_from_city_km"))
 
     if not name:
         return jsonify({"error": "Farm name is required"}), 400
-    if not farm_type:
-        return jsonify({"error": "farm_type is required"}), 400
+    if distance_error:
+        return jsonify({"error": distance_error}), 400
 
     farm = farmer_service.create_farm(
         user_id=g.user_id,
@@ -96,9 +110,14 @@ def update_farm(farm_id):
     if not update_data:
         return jsonify({"error": "No valid fields to update"}), 400
 
+    if "distance_from_city_km" in update_data:
+        km, distance_error = _clean_distance(update_data["distance_from_city_km"])
+        if distance_error:
+            return jsonify({"error": distance_error}), 400
+        update_data["distance_from_city_km"] = km
+
     updated_farm = farmer_service.update_farm(farm_id, update_data)
     if not updated_farm:
         return jsonify({"error": "Update failed"}), 500
 
     return jsonify({"farm": updated_farm}), 200
-

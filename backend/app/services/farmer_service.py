@@ -124,20 +124,9 @@ class FarmerService:
         return res.data[0] if res.data else None
     
     def update_farmer_profile(self, user_id: str, data: dict) -> dict | None:
-        """Updates farmer profile fields like budget, goals, timeline etc."""
+        """Updates farmer profile fields. Creates the farmer record on first save."""
         admin = get_admin_supabase_client()
-        
-        farmer_res = (
-            admin.table("farmers")
-            .select("id")
-            .eq("user_id", user_id)
-            .limit(1)
-            .execute()
-        )
-        if not farmer_res.data:
-            return None
-
-        farmer_id = farmer_res.data[0]["id"]
+        farmer_id = self._get_or_create_farmer(admin, user_id)
         res = (
             admin.table("farmers")
             .update(data)
