@@ -3,6 +3,7 @@
 from app.core.supabase import supabase
 from app.schemas.experience import experience_schema
 from postgrest import APIError
+from datetime import datetime, timezone
 
 class ExperienceService:
     """
@@ -60,67 +61,42 @@ class ExperienceService:
         response = query.execute()
         return response.data or []
 
-    def enable_experience(self, farm_id, experience_title):
+    def enable_experience(self, farm_id, experience_title, price=None, currency=None):
         """
-        Mark an experience as enabled (for farmer dashboard)
-        """      
-        try:
-            update_res = (
-                supabase
-                .table("experiences")
-                .update({"enabled": True})
-                .eq("farm_id", farm_id)
-                .eq("title", experience_title)
-                .execute()
-            )
+        Mark an experience as enabled. Stores when it was switched on,
+        and the farmer's own price if one was given.
+        """
+        payload = {
+            "enabled": True,
+            "enabled_at": datetime.now(timezone.utc).isoformat(),
+        }
+        if price is not None:
+            payload["price"] = price
+            payload["currency"] = currency or "USD"
 
-            if not update_res.data:
-                return None
+        update_res = (
+            supabase
+            .table("experiences")
+            .update(payload)
+            .eq("farm_id", farm_id)
+            .eq("title", experience_title)
+            .execute()
+        )
+        return update_res.data[0] if update_res.data else None
 
-            # fetch updated experience
-            fetch_res = (
-                supabase
-                .table("experiences")
-                .select("*")
-                .eq("farm_id", farm_id)
-                .eq("title", experience_title)
-                .execute()
-            )
-            return fetch_res.data[0] if fetch_res.data else None
-
-        except APIError as e:
-            raise e
-        
     def disable_experience(self, farm_id, experience_title):
         """
-        Mark an experience as disabled
+        Mark an experience as disabled. The price is kept in case it is enabled again.
         """
-        try:
-            update_res = (
-                supabase
-                .table("experiences")
-                .update({"enabled": False})
-                .eq("farm_id", farm_id)
-                .eq("title", experience_title)
-                .execute()
-            )
-
-            if not update_res.data:
-                return None
-
-            fetch_res = (
-                supabase
-                .table("experiences")
-                .select("*")
-                .eq("farm_id", farm_id)
-                .eq("title", experience_title)
-                .execute()
-            )
-
-            return fetch_res.data[0] if fetch_res.data else None
-
-        except APIError as e:
-            raise e
+        update_res = (
+            supabase
+            .table("experiences")
+            .update({"enabled": False, "enabled_at": None})
+            .eq("farm_id", farm_id)
+            .eq("title", experience_title)
+            .execute()
+        )
+        return update_res.data[0] if update_res.data else None
         
     def get_experience_by_id(self, experience_id):
         """

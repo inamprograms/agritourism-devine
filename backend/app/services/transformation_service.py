@@ -1,6 +1,7 @@
 # services/transformation_service.py
 import logging
 from app.services.farm_normalizer import FRUIT_CROPS, VEGETABLE_CROPS
+from app.services.experience_content import content_for, why_for_you
 
 logger = logging.getLogger(__name__)
 
@@ -295,7 +296,10 @@ class TransformationService:
                         "time_to_launch": exp["time_to_launch"],
                         "estimated_revenue": exp["estimated_revenue"],
                         "enabled": False,
+                        "why_for_you": why_for_you(exp["title"], farm_data),
+                        "recommended_first": False,
                         "_score": score,
+                        **content_for(exp["title"]),
                     }
                     eligible.append(result)
             except Exception as e:
@@ -305,6 +309,15 @@ class TransformationService:
 
         # Sort: level first, then score descending within each level
         eligible.sort(key=lambda x: (x["level"], -x["_score"]))
+
+        # Recommend ONE experience to start with: costs nothing to set up.
+        # Prefer one that can earn (paid); otherwise the best free one.
+        # List is already sorted, so the first match is the best fit.
+        zero_cost = [e for e in eligible if e["setup_cost_range"] == "zero"]
+        pick = next((e for e in zero_cost if e["monetization"] == "paid"), None) \
+            or (zero_cost[0] if zero_cost else None)
+        if pick:
+            pick["recommended_first"] = True
 
         # Remove internal score field before returning
         for exp in eligible:

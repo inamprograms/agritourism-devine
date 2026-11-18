@@ -12,4 +12,8 @@ def experience_schema(farm_id, exp):
         "season": exp.get("season", "year_round"),
         "setup_cost_range": exp.get("setup_cost_range", "zero"),
         "time_to_launch": exp.get("time_to_launch", "1-2 weeks"),
+        "first_steps": exp.get("first_steps", []),
+        "safety_notes": exp.get("safety_notes", []),
+        "why_for_you": exp.get("why_for_you"),
+        "recommended_first": exp.get("recommended_first", False),
     }
