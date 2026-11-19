@@ -123,6 +123,20 @@ class FarmerService:
         )
         return res.data[0] if res.data else None
     
+    def get_profile_phone(self, user_id: str) -> str | None:
+        """Phone number saved on the user's profile, or None."""
+        admin = get_admin_supabase_client()
+        res = (
+            admin.table("profiles")
+            .select("phone")
+            .eq("id", user_id)
+            .limit(1)
+            .execute()
+        )
+        if res.data:
+            return res.data[0].get("phone") or None
+        return None
+    
     def update_farmer_profile(self, user_id: str, data: dict) -> dict | None:
         """Updates farmer profile fields. Creates the farmer record on first save."""
         admin = get_admin_supabase_client()

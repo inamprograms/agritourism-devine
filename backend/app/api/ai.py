@@ -1,4 +1,4 @@
-from flask import Blueprint, request, g
+from flask import Blueprint, request, g, current_app
 from app.services.transform_ai_service import transform_advisor_service, story_service
 from app.services.transformation_service import TransformationService
 from app.services.experience_service import experience_service
@@ -7,6 +7,7 @@ from app.services.farmer_service import farmer_service
 from app.services.plan_service import plan_service
 from app.auth.decorators import require_auth
 from app.services.farm_normalizer import normalize_farm
+from app.services.post_builder import build_post_facts, assemble_post, fallback_post
 
 ai_bp = Blueprint("ai", __name__)
 
@@ -155,7 +156,10 @@ def ai_explain_experience(farm_id, experience_id):
 @require_auth
 def generate_experience_story(farm_id, experience_id):
     """
-    Visitor-facing story generation for a single experience.
+    Short invitation message the farmer can send to visitors.
+    The AI writes the friendly text; farm name, place, price and phone
+    are added from the database (post_builder), never by the AI.
+    If the AI fails, a plain template message is used instead.
     """
     if not farmer_service.verify_farm_ownership(farm_id, g.user_id):
         return {"error": "Farm not found or access denied"}, 403
@@ -168,35 +172,45 @@ def generate_experience_story(farm_id, experience_id):
         return {"error": "Experience not found"}, 404
 
     farm_record = farmer_service.get_farm_by_id(farm_id) or {}
-    farmer_profile = farmer_service.get_farmer_for_user(g.user_id) or {}
-
     farm_record, _ = normalize_farm(farm_record)
-    
+    farmer_profile = farmer_service.get_farmer_for_user(g.user_id) or {}
+    phone = farmer_service.get_profile_phone(g.user_id)
+
+    facts = build_post_facts(farm_record, farmer_profile, experience, phone)
+
     farm_context = {
         "farm_type": farm_record.get("farm_type"),
-        "crops": farm_record.get("crops", []),
-        "animals": farm_record.get("animals", {}),
-        "province": farmer_profile.get("province") or "rural area",
+        "crops": farm_record.get("crops") or [],
+        "animals": list((farm_record.get("animals") or {}).keys()),
     }
 
     experience_details = {
         "title": experience["title"],
         "type": experience["type"],
-        "level": experience["level"],
-        "monetization": experience["monetization"],
-        "enabled": experience["enabled"],
         "description": experience.get("description"),
         "season": experience.get("season"),
     }
 
-    ai_response = story_service.generate_story(
-        experience_details=experience_details,
-        farm_context=farm_context,
-        language=language
-    )
-    plan_service.increment_ai_counter(g.user_id, "story")
+    try:
+        ai_response = story_service.generate_story(
+            experience_details=experience_details,
+            farm_context=farm_context,
+            language=language
+        )
+    except Exception:
+        current_app.logger.warning("Story AI failed for experience %s", experience_id, exc_info=True)
+        ai_response = None
+
+    post = assemble_post(ai_response, facts)
+    if post is not None:
+        post["source"] = "ai"
+        plan_service.increment_ai_counter(g.user_id, "story")
+    else:
+        # AI down or unusable: send a plain template message so the farmer is never blocked
+        post = assemble_post(fallback_post(experience["title"]), facts)
+        post["source"] = "template"
 
     return {
         "experience_id": experience_id,
-        "ai": ai_response
+        "ai": post
     }

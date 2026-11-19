@@ -95,37 +95,38 @@ Return ONLY valid JSON with these exact keys:
 
 def story_generation_prompt(experience_details: dict, farm_context: dict = None) -> str:
     """
-    Visitor-facing story generation prompt.
-    Now includes farm location/type for culturally grounded storytelling.
+    Short invitation message for one experience.
+    The AI writes only the friendly text. The farm name, place, price and phone
+    are added afterwards by the backend, so they are never written here.
     """
     ctx = farm_context or {}
-    
+    crops = ", ".join(ctx.get("crops") or []) or "not listed"
+    animals = ", ".join(ctx.get("animals") or []) or "not listed"
+
     return f"""
-FARM CONTEXT:
-- Farm type: {ctx.get("farm_type", "mixed farm")}
-- Location: {ctx.get("province", "rural area")}
-- Crops: {", ".join(ctx.get("crops", [])) or "various crops"}
-- Animals: {ctx.get("animals") or "farm animals"}
-
-EXPERIENCE DETAILS:
-- Title: {experience_details.get("title")}
-- Type: {experience_details.get("type")}
-- Description: {experience_details.get("description", "")}
+FACTS YOU MAY USE (nothing else is known):
+- Farm type: {ctx.get("farm_type") or "not listed"}
+- Crops: {crops}
+- Animals: {animals}
+- Experience: {experience_details.get("title")}
+- What visitors do: {experience_details.get("description", "")}
 - Season: {experience_details.get("season", "year_round")}
-- Level: {experience_details.get("level")}
 
-Write an engaging, visitor-friendly story about this farm experience that makes 
-urban visitors excited to visit. Capture the authentic beauty of rural farm 
-life — the sights, smells, sounds, and warmth of the people.
+Write a short message that the farmer can send on WhatsApp to invite families
+to this experience.
 
-Write an engaging, visitor-friendly story about this farm experience.
+Rules:
+- "post": 40 to 55 words, in a few short, simple sentences. At most one emoji.
+- Do NOT write the farm name, the place, any price, any phone number, any date
+  or any time. The farmer's details are added after your text.
+- Use only the facts above. Never invent prices, discounts, dates, times,
+  ratings, awards, certificates, food or gifts that are not listed.
+- "longer_post": 90 to 120 words, same rules.
 
 Return ONLY valid JSON with these exact keys:
 {{
-  "headline": "short compelling headline (max 10 words)",
-  "story": "warm engaging description for visitors (2-3 paragraphs separated by \\n\\n)",
-  "highlights": ["highlight 1", "highlight 2", "highlight 3"],
-  "call_to_action": "one inviting sentence encouraging visitors to book or join"
+  "post": "short message",
+  "longer_post": "longer version"
 }}
 """
 

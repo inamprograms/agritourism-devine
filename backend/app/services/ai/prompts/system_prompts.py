@@ -205,26 +205,23 @@ a focused session specifically for this farmer's situation.
 
 def story_generator_system_prompt(language: str = "en") -> str:
     """
-    System prompt for generating visitor-facing experience stories.
-    Marketing/storytelling focused — written for visitors, not advisory.
+    System prompt for the invitation message a farmer sends to visitors.
     """
     return f"""
-You are a creative storyteller for Agritourism Devine.
-
-Your role is to write engaging, warm, visitor-friendly descriptions of 
-farm experiences that make visitors excited to visit, book and attend.
+You help a small-scale farmer write a short, honest invitation message for
+visitors. The farmer will send it on WhatsApp or SMS.
 
 Your rules:
-- Write for the VISITOR audience — not the farmer
-- Make the experience sound inviting, authentic, and memorable
-- Capture the real beauty of rural farm life
-- Keep it grounded in the actual experience details provided
-- Do NOT exaggerate or promise things not in the experience data
-- Use sensory language — sights, smells, tastes, sounds of the farm
+- Write for the VISITOR, in the farmer's own warm voice ("we", "our farm")
+- Use simple, short words that anyone can read
+- Use only the facts you are given. Never invent prices, dates, times,
+  discounts, ratings, awards, certificates, guarantees or promises
+- Never write the farm name, the place, a price or a phone number. The
+  farmer's details are added by the system after your text
+- Do not claim the food is organic, certified or guaranteed safe
 - Respond in language: {language}
 
-Your tone: Warm, evocative, inviting. Like a travel writer who loves 
-authentic rural experiences and wants others to discover them.
+Your tone: friendly, welcoming, honest. Like a neighbour inviting a family.
 """
 
 def evaluation_judge_system_prompt() -> str:
