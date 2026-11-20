@@ -1,5 +1,5 @@
 from flask import Blueprint, request, g, current_app
-from app.services.transform_ai_service import transform_advisor_service, story_service
+from app.services.transform_ai_service import transform_advisor_service, story_service, AIUnavailable
 from app.services.transformation_service import TransformationService
 from app.services.experience_service import experience_service
 from app.services.ai_chat_service import chat_service, ChatRequest
@@ -45,23 +45,43 @@ def ai_chat():
         # Guardrails rejection - return 400 with clear message
         return {"error": str(e)}, 400
 
+ALLOWED_LANGUAGES = {"en", "ur"}
+
+
+def _read_chat_input(data):
+    """Question, language and recent chat messages from the request, cleaned and limited."""
+    user_prompt = str(data.get("user_prompt") or "").strip()[:1000]
+    language = data.get("language") if data.get("language") in ALLOWED_LANGUAGES else "en"
+    raw = data.get("history") if isinstance(data.get("history"), list) else []
+    history = [
+        {
+            "role": "assistant" if m.get("role") == "assistant" else "user",
+            "content": str(m.get("content") or "")[:2000],
+        }
+        for m in raw[-6:]
+        if isinstance(m, dict)
+    ]
+    return user_prompt, language, history
+
+
 @ai_bp.route("/farms/<farm_id>/ai", methods=["POST"])
 @require_auth
 def ai_interaction(farm_id):
     """
-    Farm-level transformation advisory.
-    Fetches full farm + farmer context before calling AI.
+    Farm-level advice about the farmer's own plan.
+    Fetches full farm + farmer context before calling the AI.
     """
     if not farmer_service.verify_farm_ownership(farm_id, g.user_id):
         return {"error": "Farm not found or access denied"}, 403
 
-    data = request.json or {}
-    user_prompt = data.get("user_prompt", "")
-    language = data.get("language", "en")
+    user_prompt, language, history = _read_chat_input(request.get_json(silent=True) or {})
+    if not user_prompt:
+        return {"error": "Please type a question."}, 400
 
     farm_record = farmer_service.get_farm_by_id(farm_id) or {}
     farmer_profile = farmer_service.get_farmer_for_user(g.user_id) or {}
 
+    # None means "not answered". The prompt prints it as "not provided".
     farm_data = {
         **farm_record,
         "budget_range": farmer_profile.get("budget_range"),
@@ -74,16 +94,19 @@ def ai_interaction(farm_id):
     }
     farm_data, _ = normalize_farm(farm_data)
 
-    transformation_service = TransformationService()
     experiences = experience_service.list_experiences(farm_id)
+    ai_summary = TransformationService().get_ai_summary(experiences, farm_data)
 
-    ai_summary = transformation_service.get_ai_summary(experiences, farm_data)
+    try:
+        ai_response = transform_advisor_service.advise(
+            user_prompt=user_prompt,
+            transformation_summary=ai_summary,
+            language=language,
+            history=history,
+        )
+    except AIUnavailable:
+        return {"error": AIUnavailable.user_message}, 503
 
-    ai_response = transform_advisor_service.advise(
-        user_prompt=user_prompt,
-        transformation_summary=ai_summary,
-        language=language
-    )
     plan_service.increment_ai_counter(g.user_id, "farm")
 
     return {
@@ -96,54 +119,57 @@ def ai_interaction(farm_id):
 @require_auth
 def ai_explain_experience(farm_id, experience_id):
     """
-    Single experience advisory.
-    Passes farm context alongside experience details.
+    Advice about one experience, using the farm facts and the plan's own steps and safety notes.
     """
     if not farmer_service.verify_farm_ownership(farm_id, g.user_id):
         return {"error": "Farm not found or access denied"}, 403
 
-    data = request.get_json() or {}
-    language = data.get("language", "en")
-    user_prompt = data.get("user_prompt", "")
+    user_prompt, language, history = _read_chat_input(request.get_json(silent=True) or {})
+    if not user_prompt:
+        return {"error": "Please type a question."}, 400
 
     experience = experience_service.get_experience_by_id(experience_id)
     if not experience or experience["farm_id"] != farm_id:
         return {"error": "Experience not found"}, 404
 
     farm_record = farmer_service.get_farm_by_id(farm_id) or {}
-    farmer_profile = farmer_service.get_farmer_for_user(g.user_id) or {}
-    
     farm_record, _ = normalize_farm(farm_record)
+    farmer_profile = farmer_service.get_farmer_for_user(g.user_id) or {}
 
     farm_context = {
         "farm_type": farm_record.get("farm_type"),
-        "crops": farm_record.get("crops", []),
-        "animals": farm_record.get("animals", {}),
-        "province": farmer_profile.get("province") or "rural area",
-        "budget_range": _or_not_provided(farmer_profile.get("budget_range")),
-        "family_helpers": _or_not_provided(farmer_profile.get("family_helpers")),
-        "visitor_experience": _or_not_provided(farmer_profile.get("visitor_experience")),
+        "crops": farm_record.get("crops") or [],
+        "animals": farm_record.get("animals") or {},
+        "province": farmer_profile.get("province"),
+        "family_helpers": farmer_profile.get("family_helpers"),
+        "visitor_experience": farmer_profile.get("visitor_experience"),
     }
 
     experience_details = {
         "title": experience["title"],
         "type": experience["type"],
-        "level": experience["level"],
         "monetization": experience["monetization"],
-        "enabled": experience["enabled"],
         "description": experience.get("description"),
         "setup_cost_range": experience.get("setup_cost_range"),
         "time_to_launch": experience.get("time_to_launch"),
-        "estimated_revenue": experience.get("estimated_revenue"),
         "season": experience.get("season"),
+        "price": experience.get("price"),
+        "first_steps": experience.get("first_steps") or [],
+        "safety_notes": experience.get("safety_notes") or [],
+        "why_for_you": experience.get("why_for_you"),
     }
 
-    ai_response = transform_advisor_service.advise_experience(
-        user_prompt=user_prompt,
-        experience_details=experience_details,
-        farm_context=farm_context,
-        language=language
-    )
+    try:
+        ai_response = transform_advisor_service.advise_experience(
+            user_prompt=user_prompt,
+            experience_details=experience_details,
+            farm_context=farm_context,
+            language=language,
+            history=history,
+        )
+    except AIUnavailable:
+        return {"error": AIUnavailable.user_message}, 503
+
     plan_service.increment_ai_counter(g.user_id, "experience")
 
     return {

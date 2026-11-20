@@ -359,6 +359,10 @@ class TransformationService:
                 "estimated_revenue": exp.get("estimated_revenue"),
                 "time_to_launch": exp.get("time_to_launch"),
                 "setup_cost_range": exp.get("setup_cost_range"),
+                "enabled": exp.get("enabled", False),
+                "recommended_first": exp.get("recommended_first", False),
+                "price": exp.get("price"),
+                "first_steps": exp.get("first_steps") or [],
             })
 
         return summary
