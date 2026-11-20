@@ -1,3 +1,5 @@
+from app.services.ai.languages import prompt_name
+
 def ai_assistant_system_prompt(language: str = "en") -> str:
     return f"""
 ## IDENTITY
@@ -142,16 +144,9 @@ Friendly, knowledgeable, and encouraging — like a trusted platform expert
 who genuinely wants every farmer to succeed.
 """
 
-LANGUAGE_NAMES = {
-    "en": "English",
-    "ur": "Urdu (write in Urdu script, with simple everyday words)",
-}
-
-
 def language_name(code: str) -> str:
-    """Readable language name for the prompt. Unknown codes fall back to English."""
-    return LANGUAGE_NAMES.get((code or "en").lower(), "English")
-
+    """Language name for the prompt. Disabled or unknown codes fall back to English."""
+    return prompt_name(code)
 
 SAFETY_AND_HONESTY_RULES = """
 Safety rules (always apply):
@@ -247,7 +242,7 @@ Your rules:
 - Never write the farm name, the place, a price or a phone number. The
   farmer's details are added by the system after your text
 - Do not claim the food is organic, certified or guaranteed safe
-- Respond in language: {language}
+- Respond in language: {language_name(language)}
 
 Your tone: friendly, welcoming, honest. Like a neighbour inviting a family.
 """

@@ -8,6 +8,7 @@ from app.services.plan_service import plan_service
 from app.auth.decorators import require_auth
 from app.services.farm_normalizer import normalize_farm
 from app.services.post_builder import build_post_facts, assemble_post, fallback_post
+from app.services.ai.languages import clean_language
 
 ai_bp = Blueprint("ai", __name__)
 
@@ -45,13 +46,11 @@ def ai_chat():
         # Guardrails rejection - return 400 with clear message
         return {"error": str(e)}, 400
 
-ALLOWED_LANGUAGES = {"en", "ur"}
-
 
 def _read_chat_input(data):
     """Question, language and recent chat messages from the request, cleaned and limited."""
     user_prompt = str(data.get("user_prompt") or "").strip()[:1000]
-    language = data.get("language") if data.get("language") in ALLOWED_LANGUAGES else "en"
+    language = clean_language(data.get("language"))
     raw = data.get("history") if isinstance(data.get("history"), list) else []
     history = [
         {
@@ -190,8 +189,9 @@ def generate_experience_story(farm_id, experience_id):
     if not farmer_service.verify_farm_ownership(farm_id, g.user_id):
         return {"error": "Farm not found or access denied"}, 403
 
-    data = request.get_json() or {}
-    language = data.get("language", "en")
+    data = request.get_json(silent=True)
+    data = data if isinstance(data, dict) else {}
+    language = clean_language(data.get("language"))
 
     experience = experience_service.get_experience_by_id(experience_id)
     if not experience or experience["farm_id"] != farm_id:
