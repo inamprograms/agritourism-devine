@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, g, request
 from app.auth.decorators import require_auth
 from app.services.farmer_service import farmer_service
+from app.services.event_service import log_event
 
 farmer_bp = Blueprint("farmer", __name__)
 
@@ -85,5 +86,10 @@ def update_farmer_profile():
     updated = farmer_service.update_farmer_profile(g.user_id, update_data)
     if not updated:
         return jsonify({"error": "Update failed"}), 500
+
+    # True = answered, False = cleared. Only the field names are logged, never the answers.
+    answered = {key: value is not None for key, value in update_data.items()}
+    if any(answered.values()):
+        log_event(g.user_id, "profile_step_completed", details=answered)
 
     return jsonify({"farmer": updated}), 200

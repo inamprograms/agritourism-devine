@@ -2,6 +2,7 @@ from flask import Blueprint, jsonify, request, g
 from app.services.experience_service import experience_service
 from app.services.farmer_service import farmer_service
 from app.auth.decorators import require_auth
+from app.services.event_service import log_event
 
 experience_bp = Blueprint("experience", __name__)
 
@@ -65,6 +66,13 @@ def enable_experience(farm_id):
     updated = experience_service.enable_experience(farm_id, title, price=price, currency="USD")
     if not updated:
         return jsonify({"error": "Experience not found"}), 404
+
+    log_event(g.user_id, "experience_enabled", farm_id=farm_id, experience_id=updated.get("id"),
+              details={"has_price": price is not None})
+    if price is not None:
+        log_event(g.user_id, "price_set", farm_id=farm_id, experience_id=updated.get("id"),
+                  details={"price": price, "currency": "USD"})
+        
     return jsonify({
         "farm_id": farm_id,
         "experience": updated
@@ -86,6 +94,9 @@ def disable_experience(farm_id):
     updated = experience_service.disable_experience(farm_id, title)
     if not updated:
         return jsonify({"error": "Experience not found"}), 404
+
+    log_event(g.user_id, "experience_disabled", farm_id=farm_id, experience_id=updated.get("id"))
+    
     return jsonify({
         "farm_id": farm_id,
         "experience": updated

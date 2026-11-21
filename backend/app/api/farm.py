@@ -1,6 +1,8 @@
+import uuid
 from flask import Blueprint, jsonify, request, g
 from app.auth.decorators import require_auth
 from app.services.farmer_service import farmer_service
+from app.services.event_service import log_event, CLIENT_EVENT_TYPES
 
 farm_bp = Blueprint("farm", __name__)
 
@@ -71,6 +73,15 @@ def create_farm():
         distance_from_city_km=distance_from_city_km,
         scenic_features=scenic_features,
     )
+
+    log_event(g.user_id, "farm_created", farm_id=farm.get("id") if isinstance(farm, dict) else None,
+              details={
+                  "farm_type": farm_type,
+                  "crops": len(crops) if isinstance(crops, list) else 0,
+                  "animal_kinds": len(animals) if isinstance(animals, dict) else 0,
+                  "has_location": location is not None,
+              })
+    
     return jsonify({"farm": farm}), 201
 
 
@@ -121,3 +132,39 @@ def update_farm(farm_id):
         return jsonify({"error": "Update failed"}), 500
 
     return jsonify({"farm": updated_farm}), 200
+
+
+# --- Browser-only events: the copy button and the share button ---
+CHANNELS = {"whatsapp", "sms", "facebook", "copy"}
+
+
+@farm_bp.route("/farms/<farm_id>/events", methods=["POST"])
+@require_auth
+def client_event(farm_id):
+    """
+    Saves an event only the browser can know about (story copied, share clicked).
+    Only the short fixed list in event_service.CLIENT_EVENT_TYPES is accepted.
+    """
+    if not farmer_service.verify_farm_ownership(farm_id, g.user_id):
+        return jsonify({"error": "Farm not found or access denied"}), 403
+
+    data = request.get_json(silent=True)
+    data = data if isinstance(data, dict) else {}
+
+    event = data.get("event")
+    if not isinstance(event, str) or event not in CLIENT_EVENT_TYPES:
+        return jsonify({"error": "Unknown event"}), 400
+
+    experience_id = data.get("experience_id")
+    try:
+        experience_id = str(uuid.UUID(str(experience_id))) if experience_id else None
+    except ValueError:
+        experience_id = None
+
+    channel = data.get("channel")
+    details = {}
+    if isinstance(channel, str) and channel in CHANNELS:
+        details["channel"] = channel
+
+    log_event(g.user_id, event, farm_id=farm_id, experience_id=experience_id, details=details)
+    return jsonify({"ok": True}), 200

@@ -9,6 +9,7 @@ from app.auth.decorators import require_auth
 from app.services.farm_normalizer import normalize_farm
 from app.services.post_builder import build_post_facts, assemble_post, fallback_post
 from app.services.ai.languages import clean_language
+from app.services.event_service import log_event
 
 ai_bp = Blueprint("ai", __name__)
 
@@ -107,6 +108,8 @@ def ai_interaction(farm_id):
         return {"error": AIUnavailable.user_message}, 503
 
     plan_service.increment_ai_counter(g.user_id, "farm")
+    log_event(g.user_id, "ai_question_asked", farm_id=farm_id,
+              details={"ai": "farm", "language": language, "words": len(user_prompt.split()), "turns": len(history)})
 
     return {
         "farm_id": farm_id,
@@ -170,6 +173,8 @@ def ai_explain_experience(farm_id, experience_id):
         return {"error": AIUnavailable.user_message}, 503
 
     plan_service.increment_ai_counter(g.user_id, "experience")
+    log_event(g.user_id, "ai_question_asked", farm_id=farm_id, experience_id=experience_id,
+              details={"ai": "experience", "language": language, "words": len(user_prompt.split()), "turns": len(history)})
 
     return {
         "experience_id": experience_id,
@@ -236,6 +241,8 @@ def generate_experience_story(farm_id, experience_id):
         post = assemble_post(fallback_post(experience["title"]), facts)
         post["source"] = "template"
 
+    log_event(g.user_id, "story_generated", farm_id=farm_id, experience_id=experience_id,
+              details={"language": language, "source": post["source"]})
     return {
         "experience_id": experience_id,
         "ai": post

@@ -5,6 +5,7 @@ from app.services.farmer_service import farmer_service
 from app.auth.decorators import require_auth
 from app.services.plan_service import plan_service
 from app.services.farm_normalizer import normalize_farm
+from app.services.event_service import log_event
 
 transformation_bp = Blueprint("transformation", __name__)
 transformation_service = TransformationService()
@@ -49,6 +50,8 @@ def transform_farm(farm_id):
         return jsonify({"error": "Could not save experiences. Please try again."}), 500
 
     plan_service.increment_transformation_counter(g.user_id)
+    log_event(g.user_id, "transformed", farm_id=farm_id,
+              details={"experiences": len(experiences), "unrecognized_inputs": len(unrecognized or [])})
 
     return jsonify({
         "farm_id": farm_id,
