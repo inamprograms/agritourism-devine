@@ -91,13 +91,15 @@ class TransformAIBase:
         self.provider = get_ai_provider()
         self.temperature = Config.AI_TEMPERATURE
 
-    def _complete(self, system: str, user: str) -> str:
+    def _complete(self, system: str, user: str, max_tokens: int = None) -> str:
         """Call the AI with a time limit. Raises AIUnavailable on timeout, error or empty reply."""
+        extra = {"max_tokens": max_tokens} if max_tokens else {}  # only when a caller asks for it
         future = _executor.submit(
             self.provider.complete,
             system_prompt=system,
             user_prompt=user,
             temperature=self.temperature,
+            **extra,
         )
         try:
             text = future.result(timeout=AI_TIMEOUT_SECONDS)
@@ -146,7 +148,7 @@ class TransformStoryService(TransformAIBase):
     def generate_story(self, experience_details: dict, farm_context: dict = None, language: str = "en") -> dict:
         system = story_generator_system_prompt(language)
         user = story_generation_prompt(experience_details, farm_context)
-        return self._parse_json_response(self._complete(system, user))
+        return self._parse_json_response(self._complete(system, user, max_tokens=4000))
 
 
 transform_advisor_service = TransformAdvisorService()
