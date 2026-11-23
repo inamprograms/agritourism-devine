@@ -1,4 +1,9 @@
 # services/transformation_service.py
+import logging
+from app.services.farm_normalizer import FRUIT_CROPS, VEGETABLE_CROPS
+from app.services.experience_content import content_for, why_for_you
+
+logger = logging.getLogger(__name__)
 
 class TransformationService:
     """
@@ -135,7 +140,7 @@ class TransformationService:
             "setup_cost_range": "low",
             "time_to_launch": "1 month",
             "estimated_revenue": "Rs. 1,000–2,500 per person",
-            "eligibility": lambda f: bool(f.get("crops")) and f.get("family_helpers", 0) >= 1,
+            "eligibility": lambda f: bool(f.get("crops")) and _helpers(f) >= 1,
             "score": lambda f: 16 + (4 if _near_city(f) else 0),
         },
         {
@@ -240,7 +245,7 @@ class TransformationService:
             "estimated_revenue": "Rs. 3,000–8,000 per night per family",
             "eligibility": lambda f: (_has_structure(f, "house") or _has_structure(f, "guest_room")) and
                                      _has_toilet(f) and
-                                     f.get("visitor_experience", "none") != "none",
+                                     _has_visitor_experience(f),
             "score": lambda f: 22 + (5 if bool(f.get("scenic_features")) else 0),
         },
         {
@@ -256,8 +261,8 @@ class TransformationService:
             "estimated_revenue": "Rs. 15,000–40,000 per group",
             "eligibility": lambda f: (_has_open_space(f) and _near_city(f) and
                                       f.get("road_access") in ["pucca", "highway_nearby"] and
-                                      f.get("visitor_experience", "none") != "none"),
-            "score": lambda f: 18 + (8 if f.get("distance_from_city_km", 999) <= 30 else 0),
+                                      _has_visitor_experience(f)),
+            "score": lambda f: 18 + (8 if _within_km(f, 30) else 0),
         },
     ]
 
@@ -291,15 +296,28 @@ class TransformationService:
                         "time_to_launch": exp["time_to_launch"],
                         "estimated_revenue": exp["estimated_revenue"],
                         "enabled": False,
+                        "why_for_you": why_for_you(exp["title"], farm_data),
+                        "recommended_first": False,
                         "_score": score,
+                        **content_for(exp["title"]),
                     }
                     eligible.append(result)
-            except Exception:
-                # Skip any experience that errors during evaluation
+            except Exception as e:
+                # Skip this experience, but leave a trace so rule bugs are visible
+                logger.warning("Skipped experience %s: %s", exp.get("title"), e)
                 continue
 
         # Sort: level first, then score descending within each level
         eligible.sort(key=lambda x: (x["level"], -x["_score"]))
+
+        # Recommend ONE experience to start with: costs nothing to set up.
+        # Prefer one that can earn (paid); otherwise the best free one.
+        # List is already sorted, so the first match is the best fit.
+        zero_cost = [e for e in eligible if e["setup_cost_range"] == "zero"]
+        pick = next((e for e in zero_cost if e["monetization"] == "paid"), None) \
+            or (zero_cost[0] if zero_cost else None)
+        if pick:
+            pick["recommended_first"] = True
 
         # Remove internal score field before returning
         for exp in eligible:
@@ -320,10 +338,12 @@ class TransformationService:
                 "animals": farm_data.get("animals", {}) if farm_data else {},
                 "road_access": farm_data.get("road_access") if farm_data else None,
                 "distance_from_city_km": farm_data.get("distance_from_city_km") if farm_data else None,
-                "budget_range": farm_data.get("budget_range") if farm_data else None,
-                "visitor_experience": farm_data.get("visitor_experience") if farm_data else None,
-                "primary_goal": farm_data.get("primary_goal") if farm_data else None,
-                "timeline": farm_data.get("timeline") if farm_data else None,
+                "budget_range": (farm_data.get("budget_range") if farm_data else None) or "not provided",
+                "family_helpers": _provided(farm_data.get("family_helpers") if farm_data else None),
+                "visitor_experience": (farm_data.get("visitor_experience") if farm_data else None) or "not provided",
+                "primary_goal": (farm_data.get("primary_goal") if farm_data else None) or "not provided",
+                "timeline": (farm_data.get("timeline") if farm_data else None) or "not provided",
+                "country": (farm_data.get("country") if farm_data else None) or "not provided",
             },
             "experiences_by_level": {}
         }
@@ -339,6 +359,10 @@ class TransformationService:
                 "estimated_revenue": exp.get("estimated_revenue"),
                 "time_to_launch": exp.get("time_to_launch"),
                 "setup_cost_range": exp.get("setup_cost_range"),
+                "enabled": exp.get("enabled", False),
+                "recommended_first": exp.get("recommended_first", False),
+                "price": exp.get("price"),
+                "first_steps": exp.get("first_steps") or [],
             })
 
         return summary
@@ -346,48 +370,58 @@ class TransformationService:
 
 # ----------------------------------------------------------------
 # HELPER FUNCTIONS — used in eligibility and score lambdas
+# They expect a farm that already went through normalize_farm().
+# Rule of thumb: unknown information never counts as a "yes".
 # ----------------------------------------------------------------
 
+def _provided(value):
+    """For the AI: show 'not provided' instead of a made-up default."""
+    return "not provided" if value is None or value == "" else value
+
+
+def _helpers(f: dict) -> int:
+    v = f.get("family_helpers")
+    return v if isinstance(v, int) else 0
+
+
+def _has_visitor_experience(f: dict) -> bool:
+    return f.get("visitor_experience") in ("some", "experienced")
+
+
 def _has_fruit_crop(f: dict) -> bool:
-    fruit_crops = {"mango", "guava", "citrus", "orange", "banana", "strawberry",
-                   "apricot", "peach", "plum", "pomegranate", "date", "lemon"}
-    crops = [c.lower() for c in f.get("crops", [])]
-    return any(c in fruit_crops for c in crops)
+    return any(c in FRUIT_CROPS for c in f.get("crops") or [])
 
 
 def _has_vegetable_crop(f: dict) -> bool:
-    veg_crops = {"tomato", "potato", "onion", "carrot", "spinach", "coriander",
-                 "chilli", "garlic", "cucumber", "peas", "corn"}
-    crops = [c.lower() for c in f.get("crops", [])]
-    return any(c in veg_crops for c in crops)
+    return any(c in VEGETABLE_CROPS for c in f.get("crops") or [])
 
 
 def _has_dairy_animal(f: dict) -> bool:
-    animals = {k.lower(): v for k, v in f.get("animals", {}).items()}
-    return animals.get("cows", 0) > 0 or animals.get("goats", 0) > 0 or animals.get("buffalo", 0) > 0
+    animals = f.get("animals") or {}
+    return any(animals.get(a, 0) > 0 for a in ("cow", "goat", "buffalo"))
 
 
 def _animal_count(f: dict) -> int:
-    return sum(f.get("animals", {}).values())
+    return sum((f.get("animals") or {}).values())
+
+
+def _within_km(f: dict, km: int) -> bool:
+    dist = f.get("distance_from_city_km")
+    return dist is not None and dist <= km
 
 
 def _near_city(f: dict) -> bool:
-    dist = f.get("distance_from_city_km")
-    if dist is None:
-        return True  # assume near if unknown
-    return dist <= 60
+    return _within_km(f, 60)  # unknown distance is NOT treated as near
 
 
 def _has_open_space(f: dict) -> bool:
-    structures = [s.lower() for s in f.get("structures", [])]
-    return "open_field" in structures or len(structures) == 0  # open if no structures listed
+    return "open_field" in (f.get("structures") or [])  # unknown is NOT treated as open
 
 
 def _has_structure(f: dict, structure_name: str) -> bool:
-    structures = [s.lower() for s in f.get("structures", [])]
-    return structure_name.lower() in structures
+    return structure_name.lower() in (f.get("structures") or [])
 
 
 def _has_toilet(f: dict) -> bool:
-    structures = [s.lower() for s in f.get("structures", [])]
-    return "toilet" in structures or "bathroom" in structures or "washroom" in structures
+    s = f.get("structures") or []
+    return "toilet" in s or "bathroom" in s or "washroom" in s

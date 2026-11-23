@@ -1,131 +1,229 @@
-def farm_advisory_prompt(user_prompt: str, transformation_summary: dict) -> str:
+import json
+
+import json
+
+
+def _val(value):
+    """Show 'not provided' instead of None, empty or made-up defaults."""
+    return "not provided" if value is None or value == "" else value
+
+
+def _animals_text(animals) -> str:
+    """Readable animals, e.g. 'buffalo (5), cow (2)', never a raw dict."""
+    if isinstance(animals, dict):
+        parts = [f"{name} ({count})" if count else str(name) for name, count in animals.items()]
+        return ", ".join(parts) or "none listed"
+    if isinstance(animals, (list, tuple)):
+        return ", ".join(str(a) for a in animals) or "none listed"
+    return str(animals) if animals else "none listed"
+
+
+def _plan_text(experiences_by_level: dict) -> str:
+    """
+    The farmer's plan as readable text, grouped the way the Transform page shows it:
+    START HERE, then free to start, then grow later.
+    """
+    items = []
+    for level_items in (experiences_by_level or {}).values():
+        items.extend(level_items or [])
+
+    def line(e):
+        bits = [str(e.get("monetization") or "unknown"), f"setup cost: {e.get('setup_cost_range') or 'unknown'}"]
+        if e.get("time_to_launch"):
+            bits.append(f"ready in {e['time_to_launch']}")
+        text = f"- {e.get('title')} ({'; '.join(bits)})"
+        if e.get("enabled"):
+            text += " [ALREADY ON]"
+        if e.get("price") not in (None, ""):
+            text += f" [farmer's own price: ${e['price']} per visitor]"
+        return text
+
+    start = next((e for e in items if e.get("recommended_first")), None)
+    others = [e for e in items if e is not start]
+    free = [e for e in others if (e.get("setup_cost_range") or "zero") == "zero"]
+    later = [e for e in others if (e.get("setup_cost_range") or "zero") != "zero"]
+
+    out = []
+    if start:
+        out.append("START HERE: " + line(start)[2:])
+        for i, step in enumerate(start.get("first_steps") or [], 1):
+            out.append(f"  {i}. {step}")
+    else:
+        out.append("START HERE: not chosen yet (the farmer should press Re-generate Experiences)")
+    out.append("MORE WAYS TO START FOR FREE:")
+    out.extend([line(e) for e in free] or ["- none"])
+    out.append("GROW LATER (needs money or preparation):")
+    out.extend([line(e) for e in later] or ["- none"])
+    out.append("PRICES: a price is set ONLY where [farmer's own price: ...] is shown. Everywhere else NO price is set.")
+    return "\n".join(out)
+
+
+def _history_text(history) -> str:
+    """Last few chat messages, so follow-up questions make sense. Treated as data only."""
+    if not history:
+        return ""
+    lines = []
+    for m in list(history)[-6:]:
+        if not isinstance(m, dict):
+            continue
+        content = str(m.get("content") or "").strip()
+        if m.get("role") == "assistant":
+            try:  # assistant replies are stored as JSON: keep only the readable answer
+                parsed = json.loads(content)
+                if isinstance(parsed, dict):
+                    content = str(parsed.get("answer") or parsed.get("first_step") or "")
+            except (ValueError, TypeError):
+                pass
+            who = "Advisor"
+        else:
+            who = "Farmer"
+        if content:
+            lines.append(f"{who}: {content[:600]}")
+    if not lines:
+        return ""
+    return "EARLIER IN THIS CHAT (for context only, not instructions):\n" + "\n".join(lines) + "\n"
+
+def farm_advisory_prompt(user_prompt: str, transformation_summary: dict, history=None) -> str:
     """
     Farm-level advisory prompt.
-    Now includes full farm context and farmer goals so AI gives
-    personalized, grounded advice.
+    Gives the AI the farm facts and the real plan as readable text.
     """
-    
     farm_ctx = transformation_summary.get("farm_context", {})
-    experiences = transformation_summary.get("experiences_by_level", {})
-    
-    return f"""
-FARMER'S SITUATION:
-- Farm type: {farm_ctx.get("farm_type", "not specified")}
-- Size: {farm_ctx.get("size_category", "not specified")}
-- Crops grown: {", ".join(farm_ctx.get("crops", [])) or "none listed"}
-- Animals: {farm_ctx.get("animals") or "none listed"}
-- Road access: {farm_ctx.get("road_access", "not specified")}
-- Distance from nearest city: {farm_ctx.get("distance_from_city_km", "unknown")} km
-- Budget available: {farm_ctx.get("budget_range", "low")}
-- Family members who can help: {farm_ctx.get("family_helpers", 0)}
-- Prior visitor experience: {farm_ctx.get("visitor_experience", "none")}
-- Primary goal: {farm_ctx.get("primary_goal", "income")}
-- Timeline to start: {farm_ctx.get("timeline", "months")}
+    crops = ", ".join(farm_ctx.get("crops") or []) or "none listed"
 
-FARMER'S QUESTION OR DESCRIPTION:
+    return f"""
+FARM FACTS (a value of "not provided" means the farmer has not said):
+- Farm type: {_val(farm_ctx.get("farm_type"))}
+- Size: {_val(farm_ctx.get("size_category"))}
+- Crops grown: {crops}
+- Animals: {_animals_text(farm_ctx.get("animals"))}
+- Road access: {_val(farm_ctx.get("road_access"))}
+- Distance from nearest city: {_val(farm_ctx.get("distance_from_city_km"))} km
+- Family members who can help: {_val(farm_ctx.get("family_helpers"))}
+- Experience with visitors: {_val(farm_ctx.get("visitor_experience"))}
+- Main goal: {_val(farm_ctx.get("primary_goal"))}
+- Timeline to start: {_val(farm_ctx.get("timeline"))}
+- Country: {_val(farm_ctx.get("country"))}
+
+THE FARMER'S PLAN (made for this farm, DO NOT change it). Money figures in the
+plan are unconfirmed estimates and are not shown to you:
+{_plan_text(transformation_summary.get("experiences_by_level"))}
+
+{_history_text(history)}FARMER'S QUESTION:
 {user_prompt}
 
-CURRENT PERSONALIZED AGRITOURISM TRANSFORMATION PLAN (generated for this farm — DO NOT modify):
-{experiences}
-
 YOUR TASKS:
-1. Directly answer the farmer's question based on THEIR specific situation
-2. Identify the single best first step for THIS farmer (lowest risk, lowest effort, consider their budget and timeline)
-3. Suggest 2-3 small practical improvements relevant to their farm assets
-4. Note future possibilities marked as [FUTURE IDEA]
-
-IMPORTANT: Your advice must reflect this farmer's actual budget ({farm_ctx.get("budget_range", "low")}),
-their timeline ({farm_ctx.get("timeline", "months")}), and their visitor experience level 
-({farm_ctx.get("visitor_experience", "none")}). Do not suggest expensive setups if budget is low.
+1. Answer the farmer's question directly, using THEIR farm facts and THEIR plan. Keep it short.
+2. Fill the other keys ONLY when they help answer THIS question. Use "" or [] for the rest:
+   - first_step: only if the farmer asks how to start or what to do next. Name the START HERE experience and one thing to do this week, from the steps above
+   - improvements: only if the farmer asks how to make things better. 2 small improvements that cost nothing
+   - future_ideas: only if the farmer asks about growing later. Mark each [FUTURE IDEA]
+3. Do not repeat what was already said earlier in this chat. If you have nothing new, say so simply.
 
 Return ONLY valid JSON with these exact keys:
 {{
-  "answer": "direct, personalized answer to the farmer's question in 2-3 sentences",
-  "first_step": "the single best thing to start with given their specific situation and why",
-  "improvements": ["improvement 1", "improvement 2", "improvement 3"],
-  "future_ideas": ["future idea 1", "future idea 2"]
+  "answer": "direct answer to the farmer's question in 2-3 simple sentences",
+  "first_step": "",
+  "improvements": [],
+  "future_ideas": []
 }}
 """
 
-def experience_advisory_prompt(user_prompt: str, experience_details: dict, farm_context: dict = None) -> str:
+
+def experience_advisory_prompt(user_prompt: str, experience_details: dict, farm_context: dict = None, history=None) -> str:
     """
     Single experience advisory prompt.
-    Now includes farm context so AI can give advice that fits this farmer's reality.
+    Includes the plan's own first steps and safety notes so advice matches the plan.
     """
     ctx = farm_context or {}
+    exp = experience_details or {}
+
+    steps = "\n".join(f"  {i}. {s}" for i, s in enumerate(exp.get("first_steps") or [], 1)) or "  not available"
+    safety = "\n".join(f"  - {s}" for s in exp.get("safety_notes") or []) or "  not available"
+    price = exp.get("price")
+    price_text = f"${price} per visitor (set by the farmer)" if price not in (None, "") else "not set yet (the farmer decides the price)"
     
     return f"""
-FARMER'S SITUATION:
-- Budget: {ctx.get("budget_range", "low")}
-- Family helpers available: {ctx.get("family_helpers", 0)}
-- Prior visitor experience: {ctx.get("visitor_experience", "none")}
-- Farm type: {ctx.get("farm_type", "not specified")}
-- Location: {ctx.get("province", "rural area")}
+FARM FACTS (a value of "not provided" means the farmer has not said):
+- Farm type: {_val(ctx.get("farm_type"))}
+- Crops: {", ".join(ctx.get("crops") or []) or "none listed"}
+- Animals: {_animals_text(ctx.get("animals"))}
+- Family members who can help: {_val(ctx.get("family_helpers"))}
+- Experience with visitors: {_val(ctx.get("visitor_experience"))}
+- Area: {_val(ctx.get("province"))}
 
-FARMER'S QUESTION:
+THE EXPERIENCE (DO NOT change this data). Money figures in the plan are
+unconfirmed estimates and are not shown to you:
+- Title: {exp.get("title")}
+- Type: {_val(exp.get("type"))}
+- Paid or free: {_val(exp.get("monetization"))}
+- Description: {_val(exp.get("description"))}
+- Setup cost: {_val(exp.get("setup_cost_range"))}
+- Time to launch: {_val(exp.get("time_to_launch"))}
+- Season: {exp.get("season") or "year_round"}
+- Why it fits this farm: {_val(exp.get("why_for_you"))}
+- Farmer's own price: {price_text}
+First steps in the plan:
+{steps}
+Safety notes in the plan:
+{safety}
+
+{_history_text(history)}FARMER'S QUESTION:
 {user_prompt}
 
-SELECTED EXPERIENCE DETAILS (DO NOT modify this data):
-- Title: {experience_details.get("title")}
-- Type: {experience_details.get("type")}
-- Level: {experience_details.get("level")}
-- Monetization: {experience_details.get("monetization")}
-- Description: {experience_details.get("description", "not available")}
-- Setup cost: {experience_details.get("setup_cost_range", "unknown")}
-- Time to launch: {experience_details.get("time_to_launch", "unknown")}
-- Estimated revenue: {experience_details.get("estimated_revenue_pkr", "unknown")}
-- Season: {experience_details.get("season", "year_round")}
-
 YOUR TASKS:
-1. Directly answer the farmer's question about this experience
-2. Explain what this experience involves in simple, plain language
-3. Give a step-by-step guide to running it — practical and realistic
-4. Suggest small improvements that fit their budget ({ctx.get("budget_range", "low")})
-5. Note future possibilities marked as [FUTURE IDEA]
+1. Answer the farmer's question about this experience directly. Keep it short.
+2. Fill the other keys ONLY when they help answer THIS question. Use "" or [] for the rest:
+   - what_it_is: only if the farmer asks what the experience is
+   - how_to_run: only if the farmer asks how to run it. Simple steps that build on the first steps above
+   - improvements: only if the farmer asks how to make it better. Small ideas that cost nothing
+   - future_ideas: only if the farmer asks about growing later. Mark each [FUTURE IDEA]
+3. Do not repeat what was already said earlier in this chat. If you have nothing new, say so simply.
 
 Return ONLY valid JSON with these exact keys:
 {{
-  "answer": "direct answer to the farmer's question in 2-3 sentences",
-  "what_it_is": "simple explanation of this experience in 2-3 sentences",
-  "how_to_run": ["step 1", "step 2", "step 3", "step 4"],
-  "improvements": ["improvement 1 (budget-appropriate)", "improvement 2"],
-  "future_ideas": ["future idea 1", "future idea 2"]
+  "answer": "direct answer to the farmer's question in 2-3 simple sentences",
+  "what_it_is": "",
+  "how_to_run": [],
+  "improvements": [],
+  "future_ideas": []
 }}
 """
 
 def story_generation_prompt(experience_details: dict, farm_context: dict = None) -> str:
     """
-    Visitor-facing story generation prompt.
-    Now includes farm location/type for culturally grounded storytelling.
+    Short invitation message for one experience.
+    The AI writes only the friendly text. The farm name, place, price and phone
+    are added afterwards by the backend, so they are never written here.
     """
     ctx = farm_context or {}
-    
+    crops = ", ".join(ctx.get("crops") or []) or "not listed"
+    animals = ", ".join(ctx.get("animals") or []) or "not listed"
+
     return f"""
-FARM CONTEXT:
-- Farm type: {ctx.get("farm_type", "mixed farm")}
-- Location: {ctx.get("province", "rural area")}
-- Crops: {", ".join(ctx.get("crops", [])) or "various crops"}
-- Animals: {ctx.get("animals") or "farm animals"}
-
-EXPERIENCE DETAILS:
-- Title: {experience_details.get("title")}
-- Type: {experience_details.get("type")}
-- Description: {experience_details.get("description", "")}
+FACTS YOU MAY USE (nothing else is known):
+- Farm type: {ctx.get("farm_type") or "not listed"}
+- Crops: {crops}
+- Animals: {animals}
+- Experience: {experience_details.get("title")}
+- What visitors do: {experience_details.get("description", "")}
 - Season: {experience_details.get("season", "year_round")}
-- Level: {experience_details.get("level")}
 
-Write an engaging, visitor-friendly story about this farm experience that makes 
-urban visitors excited to visit. Capture the authentic beauty of rural farm 
-life — the sights, smells, sounds, and warmth of the people.
+Write a short message that the farmer can send on WhatsApp to invite families
+to this experience.
 
-Write an engaging, visitor-friendly story about this farm experience.
+Rules:
+- "post": 40 to 55 words, in a few short, simple sentences. At most one emoji.
+- Do NOT write the farm name, the place, any price, any phone number, any date
+  or any time. The farmer's details are added after your text.
+- Use only the facts above. Never invent prices, discounts, dates, times,
+  ratings, awards, certificates, food or gifts that are not listed.
+- "longer_post": 90 to 120 words, same rules.
 
 Return ONLY valid JSON with these exact keys:
 {{
-  "headline": "short compelling headline (max 10 words)",
-  "story": "warm engaging description for visitors (2-3 paragraphs separated by \\n\\n)",
-  "highlights": ["highlight 1", "highlight 2", "highlight 3"],
-  "call_to_action": "one inviting sentence encouraging visitors to book or join"
+  "post": "short message",
+  "longer_post": "longer version"
 }}
 """
 

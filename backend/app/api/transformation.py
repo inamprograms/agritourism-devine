@@ -1,9 +1,11 @@
-from flask import Blueprint, request, jsonify, g
+from flask import Blueprint, request, jsonify, g, current_app
 from app.services.transformation_service import TransformationService
 from app.services.experience_service import experience_service
 from app.services.farmer_service import farmer_service
 from app.auth.decorators import require_auth
 from app.services.plan_service import plan_service
+from app.services.farm_normalizer import normalize_farm
+from app.services.event_service import log_event
 
 transformation_bp = Blueprint("transformation", __name__)
 transformation_service = TransformationService()
@@ -19,53 +21,41 @@ def transform_farm(farm_id):
     if not farmer_service.verify_farm_ownership(farm_id, g.user_id):
         return jsonify({"error": "Farm not found or access denied"}), 403
 
-    # Fetch full farm record from DB
     farm_data = farmer_service.get_farm_by_id(farm_id)
     if not farm_data:
         return jsonify({"error": "Farm not found"}), 404
 
-    # Fetch farmer profile for goals/budget context
     farmer_profile = farmer_service.get_farmer_for_user(g.user_id) or {}
 
-    # Merge farmer profile into farm_data so scoring engine
-    # has full context — budget, goals, visitor experience etc.
-    farm_data["budget_range"] = farmer_profile.get("budget_range", "low")
-    farm_data["family_helpers"] = farmer_profile.get("family_helpers", 0)
-    farm_data["visitor_experience"] = farmer_profile.get("visitor_experience", "none")
-    farm_data["primary_goal"] = farmer_profile.get("primary_goal", "income")
-    farm_data["timeline"] = farmer_profile.get("timeline", "months")
+    # None means "not answered". We no longer invent defaults like "low" or 0.
+    farm_data["budget_range"] = farmer_profile.get("budget_range")
+    farm_data["family_helpers"] = farmer_profile.get("family_helpers")
+    farm_data["visitor_experience"] = farmer_profile.get("visitor_experience")
+    farm_data["primary_goal"] = farmer_profile.get("primary_goal")
+    farm_data["timeline"] = farmer_profile.get("timeline")
     farm_data["province"] = farmer_profile.get("province")
+    farm_data["country"] = farmer_profile.get("country")
 
-    # Generate personalized experiences based on real farm data
+    # Clean messy input (plurals, typos, "5 buffaloes") before the engine sees it
+    farm_data, unrecognized = normalize_farm(farm_data)
+    if unrecognized:
+        current_app.logger.warning("Unrecognized farm input (farm %s): %s", farm_id, unrecognized)
+
     experiences = transformation_service.generate_experiences(farm_data)
 
-    # Save to DB
-    experience_service.save_experiences(farm_id, experiences)
+    try:
+        result = experience_service.save_experiences(farm_id, experiences)
+    except Exception:
+        current_app.logger.exception("save_experiences failed for farm %s", farm_id)
+        return jsonify({"error": "Could not save experiences. Please try again."}), 500
 
-    # Track usage
     plan_service.increment_transformation_counter(g.user_id)
+    log_event(g.user_id, "transformed", farm_id=farm_id,
+              details={"experiences": len(experiences), "unrecognized_inputs": len(unrecognized or [])})
 
     return jsonify({
         "farm_id": farm_id,
         "message": "Experiences generated successfully",
         "total_experiences": len(experiences),
-        "breakdown": {
-            "level_1": len([e for e in experiences if e["level"] == 1]),
-            "level_2": len([e for e in experiences if e["level"] == 2]),
-            "level_3": len([e for e in experiences if e["level"] == 3]),
-        }
-    }), 200
-
-
-@transformation_bp.route("/farms/<farm_id>/experiences", methods=["GET"])
-@require_auth
-def get_farm_experiences(farm_id):
-    """Get all experiences for a specific farm."""
-    if not farmer_service.verify_farm_ownership(farm_id, g.user_id):
-        return jsonify({"error": "Farm not found or access denied"}), 403
-
-    experiences = experience_service.list_experiences(farm_id)
-    return jsonify({
-        "farm_id": farm_id,
-        "experiences": experiences
+        "changes": result,
     }), 200
