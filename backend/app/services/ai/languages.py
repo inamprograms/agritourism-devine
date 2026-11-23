@@ -12,9 +12,9 @@ DEFAULT_LANGUAGE = "en"
 # "prompt" is the exact words put into the AI instructions.
 LANGUAGES = {
     "en": {"enabled": True, "prompt": "English"},
-    "ur": {"enabled": True, "prompt": "Urdu (write in Urdu script, with simple everyday words)"},
-    "zu": {"enabled": True, "prompt": "isiZulu (Zulu), with simple everyday words"},
-    # Coming soon: listed so the platform shows them, but not accepted yet.
+    # DISABLED: to switch on again, change False to True here and in the frontend list
+    "ur": {"enabled": False, "prompt": "Urdu (write in Urdu script, with simple everyday words)"},
+    "zu": {"enabled": False, "prompt": "isiZulu (Zulu), with simple everyday words"},
     "tn": {"enabled": False, "prompt": "Setswana"},
     "st": {"enabled": False, "prompt": "Sesotho"},
     "xh": {"enabled": False, "prompt": "isiXhosa"},
