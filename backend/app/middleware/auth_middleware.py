@@ -215,23 +215,16 @@ def update_auth_cookies(response):
 
 
 def _set_auth_cookies(response, access_token: str, refresh_token: str):
-    """
-    Sets the auth tokens as secure HttpOnly cookies on the response.
+    secure = Config.COOKIE_SECURE
+    samesite = "None" if secure else "Lax"
 
-    - httponly=True  → JavaScript cannot read this cookie (XSS protection)
-    - secure=True    → Cookie only sent over HTTPS (production only)
-    - samesite="Lax" → Protects against CSRF attacks
-    """
-    
-    IS_PRODUCTION = Config.IS_PRODUCTION
- 
     response.set_cookie(
         ACCESS_TOKEN_COOKIE,
         access_token,
         max_age=3600,
         httponly=True,
-        secure=IS_PRODUCTION,
-        samesite="Lax" if not IS_PRODUCTION else "None"
+        secure=secure,
+        samesite=samesite,
     )
 
     response.set_cookie(
@@ -239,6 +232,6 @@ def _set_auth_cookies(response, access_token: str, refresh_token: str):
         refresh_token,
         max_age=30 * 24 * 3600,
         httponly=True,
-        secure=IS_PRODUCTION,
-        samesite="Lax" if not IS_PRODUCTION else "None"
+        secure=secure,
+        samesite=samesite,
     )

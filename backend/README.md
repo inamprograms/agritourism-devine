@@ -64,7 +64,7 @@ cp .env.example .env
 Update `.env` with the required values:
 ```env
 # Flask configuration
-FLASK_ENV=development
+APP_ENV=development
 FLASK_RUN_PORT=5000
 
 # Supabase configuration

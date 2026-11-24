@@ -5,23 +5,32 @@ load_dotenv()
 
 class Config:
     APP_ENV = os.getenv("APP_ENV", "local")
-    IS_PRODUCTION = APP_ENV == "production"
+    if APP_ENV not in ("local", "development", "production"):
+        raise RuntimeError(f"APP_ENV must be local, development or production, got '{APP_ENV}'")
+
+    # Anything not running on your laptop is served over HTTPS
+    IS_DEPLOYED = APP_ENV != "local"
+
+    # Used by _set_auth_cookies: Secure only when deployed (HTTPS)
+    COOKIE_SECURE = IS_DEPLOYED
+
     FLASK_RUN_PORT = int(os.getenv("FLASK_RUN_PORT", 5000))
- 
+
     FLASK_SECRET_KEY = os.getenv("FLASK_SECRET_KEY", "dev-insecure-key")
-    
+
     FRONTEND_URL = os.getenv("FRONTEND_URL", "")
-    
+
     SUPABASE_URL = os.getenv("SUPABASE_URL")
     SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
     SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
-    
-    if IS_PRODUCTION:
+
+    # Deployed servers must not start with missing or default secrets
+    if IS_DEPLOYED:
         if FLASK_SECRET_KEY == "dev-insecure-key":
-            raise RuntimeError("FLASK_SECRET_KEY must be set in production")
+            raise RuntimeError("FLASK_SECRET_KEY must be set on deployed servers")
 
         if not SUPABASE_SERVICE_ROLE_KEY:
-            raise RuntimeError("SUPABASE_SERVICE_ROLE_KEY must be set in production")
+            raise RuntimeError("SUPABASE_SERVICE_ROLE_KEY must be set on deployed servers")
 
     # AI Configuration
     # To switch providers: change AI_PROVIDER value only

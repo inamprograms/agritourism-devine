@@ -43,10 +43,10 @@ auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
 # ---------------------------------------------------------------------------
 # Environment flag
-# Set FLASK_ENV=prod in .env for production flow (email confirmation)
-# Development flow skips email confirmation for easier testing
+# APP_ENV=production or development -> email confirmation flow
+# APP_ENV=local -> skips email confirmation for easier testing
 # ---------------------------------------------------------------------------
-IS_PRODUCTION = Config.IS_PRODUCTION
+IS_PRODUCTION = Config.IS_DEPLOYED
 
 # =============================================================================
 # POST /auth/signup
@@ -56,12 +56,12 @@ def signup():
     """
     Register a new user.
 
-    Production flow (FLASK_ENV=production):
+    Deployed flow (APP_ENV=development or APP_ENV=production):
         → sign_up() → trigger creates profile → confirmation email sent
         → update_user_by_id sets role in app_metadata
         → Returns "check your email" — user cannot signin until confirmed
 
-    Development flow (FLASK_ENV=development):
+    Local flow (APP_ENV=local):
         → admin.create_user() with email_confirm=True → no email sent
         → Auto signin → cookies set → user is immediately logged in
 
