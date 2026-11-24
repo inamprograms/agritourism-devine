@@ -4,8 +4,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Config:
-    FLASK_ENV = os.getenv("FLASK_ENV", "development") 
-    IS_PRODUCTION = FLASK_ENV == "production"
+    APP_ENV = os.getenv("APP_ENV", "local")
+    IS_PRODUCTION = APP_ENV == "production"
     FLASK_RUN_PORT = int(os.getenv("FLASK_RUN_PORT", 5000))
  
     FLASK_SECRET_KEY = os.getenv("FLASK_SECRET_KEY", "dev-insecure-key")
